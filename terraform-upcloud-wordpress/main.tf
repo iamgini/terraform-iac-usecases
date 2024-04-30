@@ -39,6 +39,15 @@ resource "upcloud_server" "wp-101" {
   zone     = "au-syd1"
   plan     = "2xCPU-4GB"
 
+ login {
+    user = "root"
+    keys = [
+      var.public_key,
+    ]
+    create_password   = false
+    password_delivery = "none"
+  }
+
   network_interface {
     ip_address_family = "IPv4"
     type              = "public"
