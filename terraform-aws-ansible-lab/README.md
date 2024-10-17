@@ -2,7 +2,7 @@
 
 *Warning: this is still in-progress and do not use*
 
-Also check **[Terraform IaC Examples ](https://github.com/ginigangadharan/terraform-iac-usecases)**.
+Also check **[Terraform IaC Examples ](https://github.com/iamgini/terraform-iac-usecases)**.
 
 Read Full Article here : [Use Terraform to Create a FREE Ansible Lab in AWS](https://www.techbeatly.com/2021/06/use-terraform-to-create-a-free-ansible-lab-in-aws.html)
 
@@ -26,7 +26,7 @@ If you haven't yet, [Download](https://www.terraform.io/downloads.html) and [Ins
 
 ## Step 2. Configure AWS Credential
 
-Refer [AWS CLI Configuration Guide](https://github.com/ginigangadharan/vagrant-iac-usecases#aws-setup) for details.
+Refer [AWS CLI Configuration Guide](https://github.com/iamgini/vagrant-iac-usecases#aws-setup) for details.
 
 ## Step 3. Create SSH Keys to Access the ec2 instances
 
@@ -42,7 +42,7 @@ $ ssh-keygen
 ## Step 4. Clone the Repository and create your Ansible Lab
 
 ```shell
-$ git clone https://github.com/ginigangadharan/terraform-iac-usecases
+$ git clone https://github.com/iamgini/terraform-iac-usecases
 $ cd terraform-aws-ansible-lab
 
 ## init terraform
@@ -76,11 +76,11 @@ ansible-node-2 = <Public IP ADDRESS>
 
 ### How to Access the Lab ?
 
-Terraform will show you the `Public IP` of `ansible-engine` instance and you can access the ansible-engine using that IP. 
+Terraform will show you the `Public IP` of `ansible-engine` instance and you can access the ansible-engine using that IP.
 
 - Host: Public IP of `ansible-engine`. SSH Keys are already copied inside **all ec2 instances** under `devops` user but still you can access it using below credentials if accessing from different machines.
   - Username: `devops`
-  - Password: `devops` 
+  - Password: `devops`
 
 ```shell
 $ ssh devops@IP_ADDRESS
@@ -88,7 +88,7 @@ $ ssh devops@IP_ADDRESS
 ```
 
 - A default `ansible.cfg` and `inventory` files are already available to use under home directory (`/home/devops/`)
-  
+
 ```shell
 ## Check Files copied automatically
 [devops@ansible-engine ~]$ ls -l
@@ -105,36 +105,36 @@ total 8
 ansible-engine | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python"
-    }, 
-    "changed": false, 
+    },
+    "changed": false,
     "ping": "pong"
 }
 node2 | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python"
-    }, 
-    "changed": false, 
+    },
+    "changed": false,
     "ping": "pong"
 }
 node1 | SUCCESS => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python"
-    }, 
-    "changed": false, 
+    },
+    "changed": false,
     "ping": "pong"
 }
 ```
 
 
-## Step 5. Destroy Lab Once you are Done 
+## Step 5. Destroy Lab Once you are Done
 
-As we know, we are dealing with FREE tier, remember to destroy the resources once you finish the lab or practicing for that day. 
+As we know, we are dealing with FREE tier, remember to destroy the resources once you finish the lab or practicing for that day.
 
 ```shell
 $ terraform destroy
 ```
 
-DO not need to worry, you will get the same lab setup whenever you needed by simply doing a `terraform apply` command again. 
+DO not need to worry, you will get the same lab setup whenever you needed by simply doing a `terraform apply` command again.
 
 ## Appendix
 
@@ -146,4 +146,4 @@ If you are using Linux/Mac machine and ansible is available locally, then you an
   provisioner "local-exec" {
     command = "ansible-playbook engine-config.yaml"
   }
-```  
+```

@@ -1,15 +1,12 @@
-# Ansible Lab - Using Terraform and AWS
+# AWS Open Environment - General Setup
 
 *Warning: this is still in-progress and do not use*
-
-Also check **[Terraform IaC Examples ](https://github.com/iamgini/terraform-iac-usecases)**.
-
-Read Full Article here : [Use Terraform to Create a FREE Ansible Lab in AWS](https://www.techbeatly.com/2021/06/use-terraform-to-create-a-free-ansible-lab-in-aws.html)
 
 ## Introduction
 
 Terraform will provision below resources and take note on details.
 
+- 1x VPC
 - 1x ec2 instance for Ansible Engine.
 - 2x ec2 instances fro Ansible managed nodes.
 - We are using `Amazon Linux 2 AMI (HVM), SSD Volume Type` (`ami-02f26adf094f51167`); you can create with other AMI's as well by changing the AMI details in `variables.tf` (Consider adjusting the installation commands if you are changing the AMI or OS)
