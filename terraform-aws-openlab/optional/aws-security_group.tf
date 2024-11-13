@@ -1,6 +1,6 @@
 resource "aws_security_group" "local_access" {
   vpc_id      = aws_vpc.openlab_vpc.id
-  name        = "openlab-sg"
+  name        = var.lab_security_group_name
   description = "Created by Terraform"
 
   ingress {
@@ -8,6 +8,15 @@ resource "aws_security_group" "local_access" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow ICMP (Ping)
+  ingress {
+    description = "Allow Ping (ICMP)"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

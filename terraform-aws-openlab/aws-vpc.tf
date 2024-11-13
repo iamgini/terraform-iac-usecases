@@ -7,6 +7,6 @@ resource "aws_vpc" "openlab_vpc" {
   enable_dns_hostnames = true
 
   tags = {
-    Name = "openlab-vpc"
+    Name = var.aws_vpc_name
   }
 }
