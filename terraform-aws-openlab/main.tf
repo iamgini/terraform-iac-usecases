@@ -6,7 +6,7 @@ provider "aws" {
   #version                 = ">=2.0"
 }
 
-
+# Comment the below one if not required
 module "aap" {
   source = "./aap"
 
@@ -15,21 +15,3 @@ module "aap" {
   key_name        = aws_key_pair.ec2loginkey.key_name
   vpc_security_group_ids = [aws_security_group.local_access.id]
 }
-
-# resource "aws_key_pair" "ec2loginkey" {
-#   key_name = "login-key"
-#   ## change here if you are using different key pair
-#   public_key = file(pathexpand(var.ssh_key_pair_pub))
-# }
-
-# output "ansible-engine" {
-#   value = aws_instance.ansible-engine.public_ip
-# }
-
-# output "ansible-node-1" {
-#   value = aws_instance.ansible-nodes[0].public_ip
-# }
-
-# output "ansible-node-2" {
-#   value = aws_instance.ansible-nodes[1].public_ip
-# }

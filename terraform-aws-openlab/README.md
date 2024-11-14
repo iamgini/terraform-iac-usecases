@@ -7,8 +7,9 @@
 Terraform will provision below resources and take note on details.
 
 - 1x VPC with subnets
-- Default `region = "ap-southeast-1"` (**Singapore**), change this in `main.tf` if needed.
+- Default `region = "ap-southeast-2"` (**Asia Pacific (Sydney)**), change this in `main.tf` if needed.
 - A new Security Group will be created as `local_access`
+- And other
 
 ## How to use this repository
 
