@@ -10,3 +10,7 @@
 # output "ansible-node-2" {
 #   value = aws_instance.ansible-nodes[1].public_ip
 # }
+
+output "aap_ec2_instances" {
+  value = module.aap.ec2_instances
+}

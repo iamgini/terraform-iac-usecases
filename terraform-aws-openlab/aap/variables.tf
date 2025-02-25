@@ -9,8 +9,8 @@ variable "key_name" {
 
 variable "instance_type" {
   type = string
-  description = "The instance type of the bastion node."
-  default = "t2.xlarge"
+  description = "The instance type"
+  default = "t3.xlarge"
 }
 
 variable "subnet_id" {
@@ -18,11 +18,17 @@ variable "subnet_id" {
   description = "The subnet ID for the node."
 }
 
-variable "node_count" {
+variable "aap_node_count" {
   type = number
   description = "Number of nodes"
   default = 1
 }
+
+variable "aap_node_names" {
+  type    = list(string)
+  default = ["aap-ac1", "aap-ac2", "aap-en1", "aap-en2", "aap-gw1", "aap-gw2", "aap-hub1", "aap-eda1", "aap-eda2", "aap-db1"]
+}
+
 
 # variable "tags" {
 #   type = map(string)

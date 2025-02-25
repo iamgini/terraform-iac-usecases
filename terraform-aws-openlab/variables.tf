@@ -5,7 +5,7 @@ variable "aws_ami_id" {
 }
 
 variable "aws_vpc_name" {
-  default     = "ami-02f26adf094f51167"
+  default     = "openlab_vpc"
   description = "Name of the VPC"
 }
 
