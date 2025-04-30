@@ -12,6 +12,10 @@ variable "ssh_key_pair_pub" {
   default = "~/.ssh/id_rsa.pub"
 }
 
+variable "ssh_key_pair_extra" {
+  default = "~/.ssh/yashica.pub"
+}
+
 variable "ansible_node_count" {
   default = 2
 }

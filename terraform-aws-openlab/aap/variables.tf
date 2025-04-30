@@ -21,12 +21,12 @@ variable "subnet_id" {
 variable "aap_node_count" {
   type = number
   description = "Number of nodes"
-  default = 1
+  default = 11
 }
 
 variable "aap_node_names" {
   type    = list(string)
-  default = ["aap-ac1", "aap-ac2", "aap-en1", "aap-en2", "aap-gw1", "aap-gw2", "aap-hub1", "aap-eda1", "aap-eda2", "aap-db1"]
+  default = ["aap-ac1", "aap-ac2", "aap-gw1", "aap-gw2", "aap-hub1", "aap-hub2", "aap-eda1", "aap-eda2", "aap-db1", "aap-en1", "aap-en2",]
 }
 
 
