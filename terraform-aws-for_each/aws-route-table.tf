@@ -3,7 +3,7 @@ resource "aws_route_table" "tbly_rtb_private1" {
   vpc_id = aws_vpc.tbly_vpc.id
 
   tags = {
-    Name = "openlab-rtb-private1-ap-southeast-2a"
+    Name = "tbly-rtb-private1-ap-southeast-2a"
   }
 }
 
@@ -11,7 +11,7 @@ resource "aws_route_table" "tbly_rtb_private2" {
   vpc_id = aws_vpc.tbly_vpc.id
 
   tags = {
-    Name = "openlab-rtb-private2-ap-southeast-2b"
+    Name = "tbly-rtb-private2-ap-southeast-2b"
   }
 }
 
@@ -25,6 +25,6 @@ resource "aws_route_table" "tbly_rtb_public" {
   #   }
 
   tags = {
-    Name = "openlab-rtb-public"
+    Name = "tbly-rtb-public"
   }
 }

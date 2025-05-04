@@ -39,7 +39,6 @@ variable "app_instances" {
 }
 
 
-
 # variable "tags" {
 #   type = map(string)
 #   default = {}

@@ -11,7 +11,7 @@
 #   service_name = "com.amazonaws.ap-southeast-2.s3"
 
 #   tags = {
-#     Name = "openlab-vpce-s3"
+#     Name = "tbly-vpce-s3"
 #   }
 # }
 

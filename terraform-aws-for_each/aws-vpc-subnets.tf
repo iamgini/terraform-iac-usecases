@@ -5,7 +5,7 @@ resource "aws_subnet" "tbly_subnet_public1" {
   availability_zone = "ap-southeast-2a"
 
   tags = {
-    Name = "openlab-subnet-public1-ap-southeast-2a"
+    Name = "tbly-subnet-public1-ap-southeast-2a"
   }
 }
 
@@ -15,7 +15,7 @@ resource "aws_subnet" "tbly_subnet_public2" {
   availability_zone = "ap-southeast-2b"
 
   tags = {
-    Name = "openlab-subnet-public2-ap-southeast-2b"
+    Name = "tbly-subnet-public2-ap-southeast-2b"
   }
 }
 
@@ -25,7 +25,7 @@ resource "aws_subnet" "tbly_subnet_private1" {
   availability_zone = "ap-southeast-2a"
 
   tags = {
-    Name = "openlab-subnet-private1-ap-southeast-2a"
+    Name = "tbly-subnet-private1-ap-southeast-2a"
   }
 }
 
@@ -35,6 +35,6 @@ resource "aws_subnet" "tbly_subnet_private2" {
   availability_zone = "ap-southeast-2b"
 
   tags = {
-    Name = "openlab-subnet-private2-ap-southeast-2b"
+    Name = "tbly-subnet-private2-ap-southeast-2b"
   }
 }

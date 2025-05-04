@@ -16,7 +16,6 @@ resource "aws_instance" "app-nodes" {
   tags = {
     Name = each.key
   }
-
 }
 
 

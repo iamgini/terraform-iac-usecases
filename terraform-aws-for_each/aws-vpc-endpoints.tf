@@ -5,6 +5,6 @@ resource "aws_vpc_endpoint" "tbly_s3_vpce" {
   vpc_endpoint_type = "Gateway"
 
   tags = {
-    Name = "openlab-vpce-s3"
+    Name = "tbly-vpce-s3"
   }
 }
