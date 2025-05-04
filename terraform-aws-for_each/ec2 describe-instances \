@@ -1,0 +1,19 @@
+---------------------------------
+|       DescribeInstances       |
++------------+------------------+
+|  [1m[34mweb-back[0m  |  [1m[34mNone[0m            |
+|  [1m[34mdb[0m        |  [1m[34mNone[0m            |
+|  [1m[34mweb-front[0m |  [1m[34mNone[0m            |
+|  [1m[34mweb-db[0m    |  [1m[34mNone[0m            |
+|  [1m[34mweb-back[0m  |  [1m[34mNone[0m            |
+|  [1m[34mweb-front[0m |  [1m[34mNone[0m            |
+|  [1m[34mweb-back[0m  |  [1m[34mNone[0m            |
+|  [1m[34mweb-db[0m    |  [1m[34mNone[0m            |
+|  [1m[34mweb-front[0m |  [1m[34mNone[0m            |
+|  [1m[34mweb-front[0m |  [1m[34m13.211.191.131[0m  |
+|  [1m[34mweb-back[0m  |  [1m[34mNone[0m            |
+|  [1m[34mweb-back[0m  |  [1m[34mNone[0m            |
+|  [1m[34mweb-front[0m |  [1m[34mNone[0m            |
+|  [1m[34mdb[0m        |  [1m[34mNone[0m            |
+|  [1m[34mweb-db[0m    |  [1m[34mNone[0m            |
++------------+------------------+
