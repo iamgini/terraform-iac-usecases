@@ -18,15 +18,15 @@ variable "subnet_id" {
   description = "The subnet ID for the node."
 }
 
-variable "aap_node_count" {
+variable "ocp_node_count" {
   type = number
   description = "Number of nodes"
   default = 1
 }
 
-variable "aap_node_names" {
+variable "ocp_node_names" {
   type    = list(string)
-  default = ["aap-ac1", "aap-ac2", "aap-gw1", "aap-gw2", "aap-hub1", "aap-hub2", "aap-eda1", "aap-eda2", "aap-db1", "aap-en1", "aap-en2",]
+  default = ["ocp-controller1", "ocp-controller2", "ocp-controller3", "ocp-compute1", "ocp-compute2", "ocp-compute3", "ocp-bootstrap1", "ocp-bastion1"]
 }
 
 

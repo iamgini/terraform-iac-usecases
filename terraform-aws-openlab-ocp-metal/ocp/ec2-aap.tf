@@ -4,7 +4,7 @@ resource "aws_instance" "aap-nodes" {
   subnet_id       = var.subnet_id
   instance_type   = var.instance_type
   key_name        = var.key_name
-  count           = var.aap_node_count
+  count           = var.ocp_node_count
   security_groups = var.vpc_security_group_ids
 
   associate_public_ip_address = true
@@ -17,7 +17,7 @@ resource "aws_instance" "aap-nodes" {
   # user_data       = file("user-data-ansible-nodes.sh")
 
   tags = {
-    Name = var.aap_node_names[count.index]
+    Name = var.ocp_node_names[count.index]
   }
 
 }

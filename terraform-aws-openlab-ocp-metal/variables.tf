@@ -23,8 +23,8 @@ variable "ssh_key_pair_pub" {
   #default = "~/.ssh/id_rsa_ansilble_lab.pub"
 }
 
-variable "aap_node_count" {
-  default = 9
+variable "ocp_node_count" {
+  default = 8
 }
 
 variable "lab_security_group_name" {

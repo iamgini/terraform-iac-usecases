@@ -14,5 +14,5 @@ module "aap" {
   ami                    = var.aws_ami_id
   key_name               = aws_key_pair.ec2loginkey.key_name
   vpc_security_group_ids = [aws_security_group.local_access.id]
-  aap_node_count         = 9
+  aap_node_count         = var.aap_node_count
 }
