@@ -2,15 +2,6 @@
 
 *Warning: this is still in-progress and do not use without validating*
 
-## Introduction
-
-Terraform will provision below resources and take note on details.
-
-- 1x VPC with subnets
-- Default `region = "ap-southeast-1"` (**Asia Pacific (Singapore)**), change this in `main.tf` if needed.
-- A new Security Group will be created as `local_access`
-- And other
-
 ## Find AMI in the region
 
 ```shell
@@ -23,77 +14,166 @@ print('ap-southeast-1 AMI:', amis['ap-southeast-1']['image'])
 "
 ```
 
-## How to use this repository
-
-### Step 1. Install Terraform
-
-If you haven't yet, [Download](https://www.terraform.io/downloads.html) and [Install](https://learn.hashicorp.com/tutorials/terraform/install-cli) Terraform.
-
-### Step 2. Configure AWS Credential
-
-Refer [AWS CLI Configuration Guide](https://github.com/iamgini/vagrant-iac-usecases#aws-setup) for details.
-
-### Step 3. Create SSH Keys to Access the ec2 instances
-
-If you have existing keys, you can use that; otherwise create new ssh keys.
-
-- ***Warning**: Please remember to not to overwrite the existing ssh key pair files; use a new file name if you want to keep the old keys.*
-
-- If you are using any key files other than `~/.ssh/id_rsa`, then remember to update the same in `variables.tf` as well.
+## How to apply
 
 ```shell
-$ ssh-keygen
+# Step 1 — Apply infrastructure first (VPC, NLBs, SGs, Route53)
+
+# Comment out the ocp module block in main.tf, then:
+terraform apply -var="deploy_ocp_nodes=false"
+
+# Step 2 — Generate ignition configs on bastion
+openshift-install create ignition-configs --dir ~/clusterconfig
+
+# Step 3 — Start HTTP server for bootstrap.ign
+cp ~/clusterconfig/bootstrap.ign ~/ignition-files/
+cd ~/ignition-files && nohup python3 -m http.server 8080 &
+
+# Step 4 — Export ignition as env vars (keeps secrets out of tfvars)
+export TF_VAR_master_ign_b64=$(base64 -w0 ~/clusterconfig/master.ign)
+export TF_VAR_worker_ign_b64=$(base64 -w0 ~/clusterconfig/worker.ign)
+
+# Step 5 — Uncomment ocp module in main.tf, then apply again
+terraform apply
 ```
 
-## Step 4. Clone the Repository and create your Ansible Lab
+
+## AWS Components Managed by This IaC
 
 ```shell
-$ git clone https://github.com/iamgini/terraform-iac-usecases
-$ cd terraform-aws-openlab
+## Networking — Core VPC
 
-## init terraform
-$ terraform init
+| Resource | Terraform Name | Details |
+|---|---|---|
+| VPC | `openlab_vpc` | `10.0.0.0/16`, DNS enabled |
+| Subnet — Public 1 | `openlab_subnet_public1` | `10.0.0.0/20`, ap-southeast-2a — bastion, bootstrap |
+| Subnet — Public 2 | `openlab_subnet_public2` | `10.0.16.0/20`, ap-southeast-2b |
+| Subnet — Private 1 | `openlab_subnet_private1` | `10.0.128.0/20`, ap-southeast-2a — masters, workers |
+| Subnet — Private 2 | `openlab_subnet_private2` | `10.0.144.0/20`, ap-southeast-2b — masters, workers |
+| Internet Gateway | `openlab_igw` | Attached to VPC — public subnet outbound |
+| NAT Gateway | `openlab_nat_gw` | In public subnet — private subnet outbound internet |
+| EIP (NAT GW) | `nat_gw_eip` | Static public IP for NAT Gateway |
 
-## verify the resource details before apply
-$ terraform plan
+## Networking — Route Tables
 
-## Apply configuration - This step will spin up all necessary resources in your AWS Account
-$ terraform apply
-.
-.
-Do you want to perform these actions?
-  Terraform will perform the actions described above.
-  Only 'yes' will be accepted to approve.
+| Resource | Terraform Name | Route |
+|---|---|---|
+| Public Route Table | `openlab_rtb_public` | `0.0.0.0/0 → IGW` |
+| Private Route Table 1 | `openlab_rtb_private1` | `0.0.0.0/0 → NAT GW` |
+| Private Route Table 2 | `openlab_rtb_private2` | `0.0.0.0/0 → NAT GW` |
+| RT Association — Public 1 | `public_assoc_1` | public subnet 1 → public RT |
+| RT Association — Public 2 | `public_assoc_2` | public subnet 2 → public RT |
+| RT Association — Private 1 | `private_assoc_1` | private subnet 1 → private RT 1 |
+| RT Association — Private 2 | `private_assoc_2` | private subnet 2 → private RT 2 |
 
-  Enter a value: yes
+## Security Groups
 
-aws_key_pair.ec2loginkey: Creating...
-aws_security_group.ansible_access: Creating...
-.
-.
-Apply complete! Resources: 0 added, 0 changed, 0 destroyed.
+| Resource | Terraform Name | Purpose |
+|---|---|---|
+| Lab/Bastion SG | `local_access` | SSH, HTTP/S, AAP ports (8443–8447), Redis, gRPC, port 8080 for bootstrap.ign |
+| OCP Nodes SG | `ocp_sg` | 6443 (API), 22623 (MCS), 443/80, etcd, kubelet, VXLAN, Geneve, NodePorts |
 
-Outputs:
+## Load Balancers (NLB)
 
-<todo>
-```
+| Resource | Terraform Name | Scheme | Purpose |
+|---|---|---|---|
+| External API NLB | `ocp_api_external` | internet-facing | `api.<cluster>.<domain>` |
+| Internal API NLB | `ocp_api_internal` | internal | `api-int.<cluster>.<domain>` — private IPs only |
+| App Ingress NLB | `ocp_app_ingress` | internet-facing | `*.apps.<cluster>.<domain>` |
 
-### Step 5. Destroy Lab Once you are Done
+## NLB Target Groups
 
-As we know, we are dealing with FREE tier, remember to destroy the resources once you finish the lab or practicing for that day.
+| Resource | Terraform Name | Port | Health Check | Targets |
+|---|---|---|---|---|
+| External API 6443 | `ocp_api_6443` | 6443 | HTTPS `/readyz` | Bootstrap + Masters |
+| External MCS 22623 | `ocp_api_22623` | 22623 | HTTPS `/readyz` | Bootstrap + Masters |
+| Internal API 6443 | `ocp_api_int_6443` | 6443 | HTTPS `/readyz` | Bootstrap + Masters |
+| Internal MCS 22623 | `ocp_api_int_22623` | 22623 | HTTPS `/readyz` | Bootstrap + Masters |
+| Ingress HTTPS | `ocp_app_ingress_443` | 443 | HTTP 1936 `/healthz/ready` | Workers |
+| Ingress HTTP | `ocp_app_ingress_80` | 80 | HTTP 1936 `/healthz/ready` | Workers |
 
-```shell
-$ terraform destroy
-```
+## NLB Listeners (6 total)
 
-## Appendix
+| Resource | LB | Port |
+|---|---|---|
+| `ocp_api_external_6443` | External API NLB | 6443 → External TG 6443 |
+| `ocp_api_external_22623` | External API NLB | 22623 → External TG 22623 |
+| `ocp_api_internal_6443` | Internal API NLB | 6443 → Internal TG 6443 |
+| `ocp_api_internal_22623` | Internal API NLB | 22623 → Internal TG 22623 |
+| `ocp_app_ingress_443` | Ingress NLB | 443 → Ingress TG 443 |
+| `ocp_app_ingress_80` | Ingress NLB | 80 → Ingress TG 80 |
 
-### Use `local-exec` if you have Ansible installed locally
+## NLB Target Group Attachments (12 total)
 
-If you are using Linux/Mac machine and ansible is available locally, then you an use below method for executing Terraform provisioner. (Current configuration is to execute ansible playbook  from `ansible-engine` node itself.)
+| Nodes | Target Groups |
+|---|---|
+| Bootstrap | External 6443, External 22623, Internal 6443, Internal 22623 |
+| Masters (x3) | External 6443, External 22623, Internal 6443, Internal 22623 |
+| Workers (x3) | Ingress 443, Ingress 80 |
 
-```json
-  provisioner "local-exec" {
-    command = "ansible-playbook engine-config.yaml"
-  }
+## DNS — Route53
+
+| Resource | Terraform Name | Type | Value |
+|---|---|---|---|
+| Private Hosted Zone | `ocp_private_zone` | Private, VPC-attached | `ocp420.gineesh.com` |
+| api-int record | `ocp_api_int` | CNAME | → Internal NLB DNS |
+| api record (internal) | `ocp_api_internal` | CNAME | → Internal NLB DNS |
+
+> `*.apps` and public `api` records are in Cloudflare — not managed by this IaC
+
+## VPC Endpoints
+
+| Resource | Terraform Name | Type | Purpose |
+|---|---|---|---|
+| S3 Gateway Endpoint | `openlab_s3_vpce` | Gateway | Private/public subnet access to S3 without NAT |
+
+## EC2 — Compute (`ocp` module, deployed when `deploy_ocp_nodes=true`)
+
+| Resource | Terraform Name | Count | Subnet | Public IP |
+|---|---|---|---|---|
+| Bootstrap | `ocp_bootstrap` | 1 | Public subnet | EIP assigned |
+| EIP for Bootstrap | `bootstrap_eip` | 1 | — | Static public IP |
+| Masters | `ocp_masters` | 3 (variable) | Private subnets (round-robin AZ) | None — NAT GW |
+| Workers | `ocp_workers` | 3 (variable) | Private subnets (round-robin AZ) | None — NAT GW |
+
+## EC2 — Key Pair
+
+| Resource | Terraform Name | Details |
+|---|---|---|
+| SSH Key Pair | `ec2loginkey` | Imported from `~/.ssh/id_rsa.pub` |
+
+---
+
+## Summary Count
+
+| Category | Count |
+|---|---|
+| VPC + Subnets | 5 |
+| IGW + NAT GW + EIPs | 4 |
+| Route Tables + Routes + Associations | 10 |
+| Security Groups | 2 |
+| Load Balancers (NLB) | 3 |
+| Target Groups | 6 |
+| Listeners | 6 |
+| Target Group Attachments | 12 |
+| Route53 Zone + Records | 3 |
+| VPC Endpoints | 1 |
+| EC2 Instances + EIP (ocp module) | 8 |
+| Key Pair | 1 |
+| **Total** | **61** |
+
+---
+
+## Not Managed by This IaC (manual or out of scope)
+
+| Item | Where |
+|---|---|
+| `api.*` public DNS | Cloudflare |
+| `*.apps.*` public DNS | Cloudflare |
+| Bastion EC2 instance | Manual / separate TF |
+| OCP installation (`openshift-install`) | Manual on bastion |
+| bootstrap.ign HTTP server | Manual on bastion |
+| Post-install bootstrap cleanup | Manual (commands in `output.tf`) |
+| AAP nodes | `aap` module (separate) |
+| S3 bucket for AAP Hub | `aap-s3.tf` (commented out) |
 ```
