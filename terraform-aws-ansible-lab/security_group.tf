@@ -1,12 +1,22 @@
 resource "aws_security_group" "ansible_access" {
-  name        = "ansible-lab-sg"
-  description = "Created by Terraform for SSH Access"
+  vpc_id      = aws_vpc.ansible_lab_vpc.id
+  name        = var.lab_security_group_name
+  description = "Created by Terraform for Ansible Lab"
 
   ingress {
     description = "SSH Access"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow ICMP (Ping)
+  ingress {
+    description = "Allow Ping (ICMP)"
+    from_port   = -1
+    to_port     = -1
+    protocol    = "icmp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 

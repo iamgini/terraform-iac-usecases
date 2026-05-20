@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform fmt *)",
+      "Bash(terraform init *)",
+      "Bash(terraform validate *)",
+      "Bash(awk '{print $9}')",
+      "Bash(terraform output *)",
+      "Bash(ssh *)",
+      "Bash(aws ec2 *)",
+      "Bash(sort -k3 -r)",
+      "Bash(terraform destroy *)",
+      "Bash(terraform apply *)",
+      "Bash(terraform state *)",
+      "Bash(terraform *)",
+      "Bash(tee /tmp/terraform-apply-fedora.log)",
+      "Bash(cat)",
+      "Read(//tmp/**)"
+    ]
+  }
+}

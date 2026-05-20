@@ -1,7 +1,13 @@
 variable "aws_ami_id" {
-  ## Amazon Linux 2 AMI (HVM)
-  default = "ami-02f26adf094f51167"
-  ## "ami-0cd31be676780afa7"
+  ## Fedora 43 Cloud Base AMI
+  default = "ami-04d824463ef922362"
+  ## Previous: Amazon Linux 2 AMI (HVM) - "ami-02f26adf094f51167"
+  ## Previous: RHEL9 - "ami-0cd31be676780afa7"
+}
+
+variable "aws_vpc_name" {
+  default     = "ansible-lab-vpc"
+  description = "Name of the VPC for Ansible Lab"
 }
 
 variable "ssh_key_pair" {
@@ -16,4 +22,8 @@ variable "ssh_key_pair_pub" {
 
 variable "ansible_node_count" {
   default = 2
+}
+
+variable "lab_security_group_name" {
+  default = "ansible-lab-sg"
 }

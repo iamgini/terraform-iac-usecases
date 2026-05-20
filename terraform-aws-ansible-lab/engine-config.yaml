@@ -36,10 +36,10 @@
     #- name: Copy Authorized keys to devops user
     #  blockinfile:
     #    path: /home/devops/.ssh/authorized_keys
-    #    block:  "{{ lookup('file', '/home/ec2-user/.ssh/authorized_keys') }}"
+    #    block:  "{{ lookup('file', '/home/fedora/.ssh/authorized_keys') }}"
     - name: Copy Sample Inventory to devops home
       copy:
-        src: '/home/ec2-user/inventory'
+        src: '/home/fedora/inventory'
         dest: "/home/devops/inventory"
         mode: '0755'
         owner: devops
@@ -48,7 +48,7 @@
 
     - name: Copy ansible.cfg to devops home
       copy:
-        src: '/home/ec2-user/ansible.cfg'
+        src: '/home/fedora/ansible.cfg'
         dest: "/home/devops/ansible.cfg"
         mode: '0755'
         owner: devops
@@ -64,17 +64,17 @@
 
     - name: Generate an OpenSSH keypair 2048 bits
       openssh_keypair:
-        path: '/home/ec2-user/.ssh/id_rsa'
+        path: '/home/fedora/.ssh/id_rsa'
         size: 2048
         force: True
-        owner: ec2-user
-        group: ec2-user
+        owner: fedora
+        group: fedora
       delegate_to: ansible-engine
       when: inventory_hostname == 'ansible-engine'
 
     - name: Copy SSH Private Key to devops user
       copy:
-        src: "/home/ec2-user/.ssh/id_rsa"
+        src: "/home/fedora/.ssh/id_rsa"
         dest: "/home/devops/.ssh/id_rsa"
         owner: devops
         group: devops
@@ -84,7 +84,7 @@
 
     - name: Copy SSH Public Key to devops user
       copy:
-        src: "/home/ec2-user/.ssh/id_rsa.pub"
+        src: "/home/fedora/.ssh/id_rsa.pub"
         dest: "/home/devops/.ssh/id_rsa.pub"
         owner: devops
         group: devops
@@ -95,8 +95,8 @@
     - name: Fetch the Public Key Content
       become: false
       set_fact:
-        devops_public_key: "{{ lookup('file', '/home/ec2-user/.ssh/id_rsa.pub') }}"
-        host_machine_public_key: "{{ lookup('file', '/home/ec2-user/.ssh/authorized_keys') }}"
+        devops_public_key: "{{ lookup('file', '/home/fedora/.ssh/id_rsa.pub') }}"
+        host_machine_public_key: "{{ lookup('file', '/home/fedora/.ssh/authorized_keys') }}"
       delegate_to: ansible-engine 
       when: inventory_hostname == 'ansible-engine'    
 

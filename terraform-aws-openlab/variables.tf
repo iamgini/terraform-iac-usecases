@@ -24,7 +24,7 @@ variable "ssh_key_pair_pub" {
 }
 
 variable "aap_node_count" {
-  default = 9
+  default = 2
 }
 
 variable "lab_security_group_name" {
