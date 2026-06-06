@@ -94,19 +94,9 @@ variable "vpc_security_group_ids" {
 
 variable "vpc_id" {
   type        = string
-  description = "VPC ID for creating load balancer resources"
+  description = "VPC ID for EFS mount targets"
 }
 
-variable "subnet_ids" {
-  type        = list(string)
-  description = "List of subnet IDs for the load balancer (requires at least 2 in different AZs)"
-}
-
-variable "ssl_certificate_arn" {
-  type        = string
-  description = "ARN of the SSL certificate for HTTPS listener"
-  default     = ""
-}
 
 variable "enable_public_ip" {
   type        = bool

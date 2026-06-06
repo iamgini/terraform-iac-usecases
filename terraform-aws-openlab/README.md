@@ -13,7 +13,6 @@ This Terraform configuration provisions a complete AAP infrastructure with:
   - 2x Event-Driven Ansible (EDA) Controllers
   - 1x Database Server
 - **VPC with Public/Private Subnets** across 2 Availability Zones
-- **Application Load Balancer (ALB)** with target groups for each AAP component
 - **EFS Storage** for shared AAP Hub content
 - **Bastion/Jumpserver** with Elastic IP for secure SSH access
 - **Private AAP Nodes** (no public IPs, accessible only via bastion)
@@ -83,8 +82,7 @@ aap_ec2_instances = {
   }
   ...
 }
-jumpserver_public_ip = "3.24.28.76"
-alb_dns_name = "aap-alb-xxxxxxxxx.ap-southeast-2.elb.amazonaws.com"
+jumpserver_public_ip = "<ELASTIC_IP>"
 ```
 
 ## Step 5. Generate AAP Inventory
@@ -140,7 +138,7 @@ aap-db1.example.org ansible_host=10.0.6.125
 # Add to [all:vars]:
 # ansible_user=ec2-user
 # ansible_ssh_private_key_file=~/.ssh/id_rsa
-# ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@3.24.28.76" -o StrictHostKeyChecking=no'
+# ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>" -o StrictHostKeyChecking=no'
 ```
 
 **Usage:**
@@ -150,7 +148,14 @@ aap-db1.example.org ansible_host=10.0.6.125
 
 ## Step 6. Setup Nginx Load Balancer (HTTPS)
 
-Configure nginx on jumpserver with Let's Encrypt SSL:
+First, generate the inventory file:
+
+```bash
+# Generate inventory from Terraform output
+terraform output -raw aap_inventory > inventory.ini
+```
+
+Then configure nginx on jumpserver with Let's Encrypt SSL:
 
 ```bash
 cd playbooks
@@ -170,7 +175,11 @@ ansible-playbook -i ../inventory.ini setup-nginx-lb.yml
 
 **Connect to Bastion:**
 ```shell
-ssh -i ~/.ssh/id_rsa ec2-user@3.24.28.76
+# Get the jumpserver IP from terraform output
+terraform output jumpserver_public_ip
+
+# Connect
+ssh -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>
 ```
 
 **Connect to AAP nodes via Bastion (from local machine):**
@@ -179,8 +188,8 @@ The inventory already includes the bastion proxy configuration. When you run the
 
 **Manual SSH to AAP nodes (for troubleshooting):**
 ```shell
-# Via ProxyCommand
-ssh -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@3.24.28.76" ec2-user@10.0.13.69
+# Via ProxyCommand (replace IPs with your actual values from terraform output)
+ssh -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>" ec2-user@<AAP_NODE_PRIVATE_IP>
 ```
 ```
 
@@ -215,7 +224,7 @@ aap_domain_name      = "aap.yourdomain.com"
 
 **Network:**
 - VPC: 10.0.0.0/16
-- 2 Public Subnets (bastion + ALB)
+- 2 Public Subnets (bastion)
 - 2 Private Subnets (AAP nodes)
 - NAT Gateway for private subnet internet access
 - S3 VPC Endpoint for EFS
@@ -223,14 +232,13 @@ aap_domain_name      = "aap.yourdomain.com"
 **Security:**
 - AAP nodes: Private IPs only, no direct internet access
 - Bastion: Single entry point with Elastic IP (static)
-- Security Groups: Bastion → AAP (SSH), ALB → AAP (ports 8443-8446)
+- Security Groups: Bastion → AAP (SSH)
 
 **Load Balancer:**
-- ALB with 4 target groups:
-  - Port 8443: Automation Controller
-  - Port 8444: Automation Hub
-  - Port 8445: Event-Driven Ansible
-  - Port 8446: Automation Gateway
+- Nginx on jumpserver with Let's Encrypt SSL
+- Load balances to AAP Gateway nodes (port 8446)
+- Uses `least_conn` algorithm
+- WebSocket support for AAP UI
 
 ## Cleanup
 
@@ -240,13 +248,13 @@ aap_domain_name      = "aap.yourdomain.com"
 terraform destroy
 ```
 
-**What survives:**
-- Elastic IP (persistent) - same IP on next apply
-- Cloudflare DNS auto-updates to EIP
+**What happens:**
+- All infrastructure destroyed including Elastic IP
+- Cloudflare DNS automatically updates to new IP on next apply
 
 **After destroy → apply:**
-1. `terraform apply` (infrastructure + DNS auto-restored)
-2. Re-run nginx playbook (new SSL cert)
+1. `terraform apply` (new infrastructure + Cloudflare DNS auto-updates)
+2. Re-run nginx playbook (obtain new SSL cert)
 3. Re-install AAP
 
 ### Step 8. Destroy Lab Once you are Done

@@ -35,10 +35,6 @@ output "efs_dns_name" {
   description = "EFS DNS name for mounting on AAP nodes"
 }
 
-output "alb_dns_name" {
-  value       = module.aap.alb_dns_name
-  description = "DNS name of the Application Load Balancer for AAP"
-}
 
 output "aap_url" {
   value       = var.cloudflare_api_token != "" ? "https://${var.aap_domain_name}" : "Nginx LB: https://${aws_eip.jumpserver_eip.public_ip} (use custom domain or Cloudflare)"

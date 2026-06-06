@@ -34,4 +34,4 @@ dig +short aap.lab.gineesh.com
 
 - **Zone**: `gineesh.com` (NOT `lab.gineesh.com` - that's a subdomain)
 - **Cloudflare proxy**: MUST be `false` (Let's Encrypt needs direct access)
-- **EIP**: Persistent across destroy/apply cycles
+- **EIP**: Not preserved - Cloudflare DNS auto-updates to new IP after destroy/apply

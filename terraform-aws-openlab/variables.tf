@@ -38,11 +38,6 @@ variable "lab_security_group_name" {
   default = "openlab-sg"
 }
 
-variable "ssl_certificate_arn" {
-  type        = string
-  description = "ARN of the SSL certificate for ALB HTTPS listener (optional)"
-  default     = ""
-}
 
 variable "jumpserver_instance_type" {
   type        = string

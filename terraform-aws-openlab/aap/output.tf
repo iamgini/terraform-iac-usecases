@@ -42,22 +42,3 @@ output "efs_access_point_id" {
   description = "EFS Access Point ID for AAP Hub"
 }
 
-output "alb_dns_name" {
-  value       = aws_lb.aap_alb.dns_name
-  description = "DNS name of the Application Load Balancer"
-}
-
-output "alb_arn" {
-  value       = aws_lb.aap_alb.arn
-  description = "ARN of the Application Load Balancer"
-}
-
-output "target_group_arns" {
-  value = {
-    controller = aws_lb_target_group.aap_controller.arn
-    hub        = aws_lb_target_group.aap_hub.arn
-    eda        = aws_lb_target_group.aap_eda.arn
-    gateway    = aws_lb_target_group.aap_gateway.arn
-  }
-  description = "ARNs of all target groups"
-}

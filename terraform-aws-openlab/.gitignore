@@ -16,6 +16,8 @@ override.tf.json
 *.crt
 *.p12
 *.pfx
+terraform.tfvars
+inventory.ini
 
 # Environment Files
 .env

@@ -60,10 +60,6 @@ resource "aws_instance" "jumpserver" {
 resource "aws_eip" "jumpserver_eip" {
   domain = "vpc"
 
-  lifecycle {
-    prevent_destroy = true  # Keep EIP even on terraform destroy
-  }
-
   tags = {
     Name = "jumpserver-eip"
   }

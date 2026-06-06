@@ -9,11 +9,10 @@ Terraform configuration for deploying **Ansible Automation Platform (AAP)** infr
 **Key Infrastructure:**
 - 9 AAP nodes (2 Controllers, 2 Gateways, 2 Hubs, 2 EDA Controllers, 1 Database)
 - VPC with public/private subnets across 2 AZs
-- Jumpserver (bastion) with persistent Elastic IP
-- Application Load Balancer with 4 target groups (ports 8443-8446)
+- Jumpserver (bastion) with Elastic IP
 - EFS for shared AAP Hub content
 - Nginx reverse proxy with Let's Encrypt SSL on jumpserver
-- Optional Cloudflare DNS automation
+- Optional Cloudflare DNS automation (auto-updates DNS on EIP changes)
 
 **Default region:** `ap-southeast-2` (Asia Pacific - Sydney)
 
@@ -34,7 +33,7 @@ terraform plan
 # Apply infrastructure (creates ~40+ resources)
 terraform apply
 
-# Destroy all infrastructure (keeps Elastic IP persistent)
+# Destroy all infrastructure (destroys everything including EIP)
 terraform destroy
 ```
 
@@ -64,11 +63,17 @@ ssh -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<ju
 ### Setup Nginx Load Balancer (HTTPS)
 
 ```bash
+# First, generate inventory from Terraform output
+terraform output -raw aap_inventory > inventory.ini
+
+# Then run nginx playbook
 cd playbooks
 ansible-playbook -i ../inventory.ini setup-nginx-lb.yml
 ```
 
 This configures nginx on jumpserver with automated Let's Encrypt certificate for `https://aap.lab.gineesh.com`.
+
+**Note:** `inventory.ini` is gitignored (contains actual IPs). Always regenerate from Terraform output.
 
 ### Cloudflare DNS Automation
 
@@ -90,7 +95,7 @@ dig +short aap.lab.gineesh.com
 ### Module Structure
 
 - **Root module** (`*.tf` files): VPC, networking, security groups, jumpserver, Cloudflare DNS
-- **AAP module** (`./aap/`): EC2 instances, ALB, EFS, target groups
+- **AAP module** (`./aap/`): EC2 instances, EFS
 
 The separation allows reusing the AAP module for different environments while keeping network infrastructure at root level.
 
@@ -99,11 +104,12 @@ The separation allows reusing the AAP module for different environments while ke
 **Private AAP nodes** (`enable_public_ip_aap = false`):
 - No public IPs assigned to AAP instances
 - All SSH access via jumpserver bastion
-- Security group restricts ingress to jumpserver and ALB only
+- Security group restricts ingress to jumpserver only
 - NAT Gateway provides outbound internet for package updates
 
 **Bastion pattern:**
-- Single Elastic IP (persistent across destroy/apply)
+- Single Elastic IP (not preserved on destroy - gets new IP on each apply)
+- Cloudflare DNS auto-updates to new EIP when configured
 - ProxyCommand in inventory allows AAP installer to reach private nodes from local machine
 - Nginx reverse proxy on jumpserver terminates SSL and load balances to AAP gateways
 
@@ -120,15 +126,7 @@ The inventory template (`output.tf`) uses regex to group instances by role for A
 
 ### Load Balancer Configuration
 
-**ALB with 4 target groups:**
-- Port 8443 → Automation Controllers (`aap-ac*`)
-- Port 8444 → Automation Hubs (`aap-hub*`)
-- Port 8445 → EDA Controllers (`aap-eda*`)
-- Port 8446 → Automation Gateways (`aap-gw*`)
-
-Target group attachments are dynamic based on node name patterns (see `aap/alb.tf`).
-
-**Nginx reverse proxy:**
+**Nginx reverse proxy (on jumpserver):**
 - Runs on jumpserver
 - Terminates Let's Encrypt SSL
 - Load balances to port 8446 (gateways) using `least_conn`
@@ -152,8 +150,8 @@ Shared storage for AAP Hub content across hub nodes. Mounted via NFS using EFS D
 Key outputs for post-deployment:
 - `aap_inventory`: Full AAP inventory with bastion proxy config
 - `jumpserver_connection`: SSH command for bastion
-- `alb_dns_name`: Direct ALB access (not used in production - nginx on jumpserver is preferred)
 - `cloudflare_dns_status`: DNS configuration status
+- `aap_url`: Access URL for AAP (via Nginx on jumpserver)
 
 ## Configuration Variables
 
@@ -188,15 +186,19 @@ Key outputs for post-deployment:
 - `jumpserver.tf`: Bastion instance with Elastic IP and Cloudflare DNS
 - `aws-ec2-keypair.tf`: SSH key pair resource
 - `aap/ec2-aap.tf`: AAP node instances
-- `aap/alb.tf`: Application Load Balancer and target groups
 - `aap/efs.tf`: EFS file system and mount targets
+
+**SSL Strategy:**
+- **NOT using AWS ACM or ALB** - using Let's Encrypt via Nginx on jumpserver
+- Nginx playbook automatically obtains and renews certificates
+- SSL termination happens on Nginx jumpserver
 
 **Configuration:**
 - `main.tf`: Provider configuration and AAP module invocation
 - `variables.tf`, `aap/variables.tf`: Input variables
 - `output.tf`, `aap/output.tf`: Outputs
 - `versions.tf`: Terraform and provider version constraints
-- `acm-certificate.tf`: ACM certificate (optional, not used - Let's Encrypt preferred)
+- `cloudflare-dns.tf`: Cloudflare DNS A records for AAP domain
 
 **Ansible:**
 - `playbooks/setup-nginx-lb.yml`: Nginx + Let's Encrypt automation
@@ -216,8 +218,8 @@ Key outputs for post-deployment:
 If adding new AAP node types (e.g., execution nodes):
 1. Add names to `aap_node_names` in `aap/variables.tf`
 2. Update inventory template in `output.tf` with new sections and regex patterns
-3. Add ALB target group in `aap/alb.tf` if new port mapping needed
-4. Update security group rules if new port access required
+3. Update security group rules if new port access required
+4. Update Nginx configuration if new services need load balancing
 
 ### When Changing SSH Keys
 
@@ -231,19 +233,20 @@ If using keys other than `~/.ssh/id_rsa`:
 - Zone MUST be the root domain (`gineesh.com`), not subdomain
 - API token needs "Zone DNS Edit" + "Zone Read" permissions
 - Setting `cloudflare_proxied = true` will break Let's Encrypt (use `false`)
-- Elastic IP is persistent - DNS updates automatically on apply
+- Elastic IP is NOT preserved - Cloudflare DNS automatically updates to new IP on apply
 
 ### Destroying and Recreating
 
-**What persists:**
-- Elastic IP (`aws_eip.jumpserver_eip` lifecycle: `create_before_destroy`)
-- Cloudflare DNS auto-updates to same EIP
+**What happens on destroy:**
+- All infrastructure destroyed including Elastic IP
+- Cloudflare DNS automatically updates to new IP on next apply
 
 **After destroy → apply:**
-1. Infrastructure recreates with same jumpserver IP
-2. Regenerate inventory: `terraform output -raw aap_inventory > inventory.ini`
-3. Re-run nginx playbook: `ansible-playbook -i inventory.ini setup-nginx-lb.yml`
-4. Re-install AAP using new inventory
+1. Infrastructure recreates with new jumpserver IP
+2. Cloudflare DNS auto-updates (if configured)
+3. Regenerate inventory: `terraform output -raw aap_inventory > inventory.ini`
+4. Re-run nginx playbook: `ansible-playbook -i inventory.ini setup-nginx-lb.yml`
+5. Re-install AAP using new inventory
 
 ### Instance Type Recommendations
 
@@ -265,8 +268,13 @@ If using keys other than `~/.ssh/id_rsa`:
 
 **Terraform state issues:**
 - State is local (`terraform.tfstate`) - not using remote backend
-- Do not commit `terraform.tfstate` to git (add to `.gitignore`)
+- Do not commit `terraform.tfstate`, `terraform.tfvars`, or `inventory.ini` to git (all gitignored)
 - For team collaboration, consider migrating to S3 backend
+
+**Hardcoded IPs in documentation:**
+- All example IPs use placeholders (`<JUMPSERVER_IP>`, `<AAP_NODE_PRIVATE_IP>`)
+- Always use `terraform output` to get actual IPs
+- `inventory.ini` is generated dynamically and gitignored
 
 **Module not found:**
 - Run `terraform init` to download AAP module (it's a local path module)

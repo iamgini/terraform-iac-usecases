@@ -81,7 +81,7 @@ sudo tail -f /var/log/nginx/error.log
 
 ```
 Internet → Jumpserver:443 (nginx) → AAP Gateways → AAP Components
-           3.24.28.76                10.0.x.x:8446
+           <ELASTIC_IP>              10.0.x.x:8446
            (Let's Encrypt SSL)       (Load balanced)
                                      ├─ aap-gw1
                                      └─ aap-gw2

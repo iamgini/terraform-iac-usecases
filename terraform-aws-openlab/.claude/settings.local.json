@@ -14,7 +14,9 @@
       "Bash(ssh-keygen -R 3.24.28.76)",
       "Bash(curl -k -I https://aap.lab.gineesh.com)",
       "Bash(grep -v \"^$\")",
-      "Bash(grep -E \"\\\\.md$|scripts/\")"
+      "Bash(grep -E \"\\\\.md$|scripts/\")",
+      "Bash(grep -r -E '[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}\\\\.[0-9]{1,3}' /home/gmadappa/workarea/terraform-iac-usecases/terraform-aws-openlab --include=\"*.md\" --include=\"*.tf\" --include=\"*.yml\" --include=\"*.ini\" --exclude-dir=.terraform)",
+      "Bash(git *)"
     ]
   }
 }
