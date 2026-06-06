@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(terraform validate *)",
+      "Bash(chmod +x *)",
+      "Bash(terraform init *)",
+      "Bash(terraform plan *)",
+      "Bash(terraform apply *)",
+      "Bash(terraform output *)",
+      "Bash(terraform refresh *)",
+      "Bash(ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o ConnectTimeout=5 ec2-user@3.24.28.76 \"echo 'Bastion connection OK'\")",
+      "Bash(ssh *)",
+      "Bash(ansible-playbook -i ../inventory.ini setup-nginx-lb.yml)",
+      "Bash(ssh-keygen -R 3.24.28.76)",
+      "Bash(curl -k -I https://aap.lab.gineesh.com)",
+      "Bash(grep -v \"^$\")",
+      "Bash(grep -E \"\\\\.md$|scripts/\")"
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+# ========================================
+# Cloudflare DNS Automation
+# ========================================
+# DO NOT add tokens here! Use environment variables instead:
+#   export TF_VAR_cloudflare_api_token=$(cat ~/.config/cloudflare)
+#   export TF_VAR_cloudflare_zone_id="your-zone-id-here"
+#
+# See CLOUDFLARE_SETUP.md for details
+
+# AAP Domain Configuration
+aap_domain_name = "aap.lab.gineesh.com"
+aap_subdomain   = "aap.lab"
+
+# Cloudflare Proxy (Orange Cloud)
+# MUST be false - Cloudflare proxy breaks Let's Encrypt HTTP challenge
+cloudflare_proxied = false
+
+# Create wildcard DNS (*.aap.lab.gineesh.com)
+create_wildcard_dns = true
+
+# ========================================
+# AAP Node Configuration
+# ========================================
+aap_node_count = 9
+
+# Enable public IPs on AAP nodes
+# false = Access only via jumpserver (more secure - RECOMMENDED)
+enable_public_ip_aap = false
+
+# ========================================
+# Instance Types (optional overrides)
+# ========================================
+# jumpserver_instance_type = "t2.micro"  # Default in variables.tf

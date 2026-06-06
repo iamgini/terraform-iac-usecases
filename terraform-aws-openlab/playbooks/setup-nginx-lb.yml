@@ -1,0 +1,110 @@
+---
+- name: Configure Nginx Load Balancer for AAP Gateways
+  hosts: lab-lb
+  become: true
+  vars:
+    aap_domain: "aap.lab.gineesh.com"
+    letsencrypt_email: "hi@gineesh.com"
+    gateway_port: 8446
+
+  tasks:
+    - name: Update all packages
+      ansible.builtin.dnf:
+        name: "*"
+        state: latest
+        update_cache: true
+
+    - name: Install nginx and python3-pip
+      ansible.builtin.dnf:
+        name:
+          - nginx
+          - python3-pip
+        state: present
+
+    - name: Remove dnf certbot if installed (conflicts with pip version)
+      ansible.builtin.dnf:
+        name:
+          - certbot
+          - python3-certbot-nginx
+        state: absent
+
+    - name: Install certbot via pip (works better on Amazon Linux 2023)
+      ansible.builtin.pip:
+        name:
+          - certbot
+          - certbot-nginx
+        state: present
+
+    - name: Ensure nginx is enabled and started
+      ansible.builtin.systemd:
+        name: nginx
+        enabled: true
+        state: started
+
+    - name: Configure firewall for HTTP and HTTPS
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop:
+        - http
+        - https
+      failed_when: false  # In case firewalld is not running
+
+    - name: Deploy nginx configuration for AAP
+      ansible.builtin.template:
+        src: nginx-aap.conf.j2
+        dest: /etc/nginx/conf.d/aap.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload nginx
+
+    - name: Remove default nginx server block
+      ansible.builtin.file:
+        path: /etc/nginx/conf.d/default.conf
+        state: absent
+      notify: Reload nginx
+
+    - name: Test nginx configuration
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Check if Let's Encrypt certificate exists
+      ansible.builtin.stat:
+        path: "/etc/letsencrypt/live/{{ aap_domain }}/fullchain.pem"
+      register: letsencrypt_cert
+
+    - name: Obtain Let's Encrypt SSL certificate
+      ansible.builtin.command: >
+        certbot --nginx -d {{ aap_domain }}
+        --non-interactive --agree-tos
+        -m {{ letsencrypt_email }}
+        --redirect
+      args:
+        creates: "/etc/letsencrypt/live/{{ aap_domain }}/fullchain.pem"
+      when: not letsencrypt_cert.stat.exists
+
+    - name: Update nginx to use SSL certificate
+      ansible.builtin.template:
+        src: nginx-aap-ssl.conf.j2
+        dest: /etc/nginx/conf.d/aap.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: Reload nginx
+
+    - name: Setup certbot auto-renewal
+      ansible.builtin.cron:
+        name: "Renew Let's Encrypt certificates"
+        minute: "0"
+        hour: "3"
+        job: "/usr/bin/certbot renew --quiet && /usr/bin/systemctl reload nginx"
+      when: letsencrypt_cert.stat.exists
+
+  handlers:
+    - name: Reload nginx
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded

@@ -10,7 +10,7 @@ variable "key_name" {
 variable "instance_type" {
   type = string
   description = "The instance type"
-  default = "t3.xlarge"
+  default = "t2.xlarge"
 }
 
 variable "subnet_id" {
@@ -90,6 +90,28 @@ variable "vpc_security_group_ids" {
   type = list(string)
   default = []
   description = "VPC security group IDs for the node."
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "VPC ID for creating load balancer resources"
+}
+
+variable "subnet_ids" {
+  type        = list(string)
+  description = "List of subnet IDs for the load balancer (requires at least 2 in different AZs)"
+}
+
+variable "ssl_certificate_arn" {
+  type        = string
+  description = "ARN of the SSL certificate for HTTPS listener"
+  default     = ""
+}
+
+variable "enable_public_ip" {
+  type        = bool
+  description = "Enable public IP for AAP nodes (set to false to use jumpserver only)"
+  default     = true
 }
 
 # variable "publish_strategy" {

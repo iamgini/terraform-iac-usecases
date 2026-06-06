@@ -7,7 +7,7 @@ resource "aws_instance" "aap-nodes" {
   count           = var.aap_node_count
   security_groups = var.vpc_security_group_ids
 
-  associate_public_ip_address = true
+  associate_public_ip_address = var.enable_public_ip
 
   root_block_device {
     volume_size = 100        # Size in GB

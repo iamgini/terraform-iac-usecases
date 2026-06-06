@@ -1,0 +1,38 @@
+# Terraform Files
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Sensitive Files
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Environment Files
+.env
+.env.local
+
+# IDE Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Backup Files
+*.backup
+*.bak
+*.orig

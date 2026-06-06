@@ -116,6 +116,14 @@ resource "aws_security_group" "local_access" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "NFS for EFS"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = ["10.0.0.0/16"]
+  }
+
   egress {
     from_port        = 0
     to_port          = 0
