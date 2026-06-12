@@ -14,7 +14,7 @@ provider "cloudflare" {
 module "aap" {
   source = "./aap"
 
-  subnet_id              = aws_subnet.openlab_subnet_public1.id
+  subnet_id              = aws_subnet.openlab_subnet_private1.id # Changed to private subnet for NAT Gateway routing
   vpc_id                 = aws_vpc.openlab_vpc.id
   ami                    = var.aws_ami_id
   key_name               = aws_key_pair.ec2loginkey.key_name
