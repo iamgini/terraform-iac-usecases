@@ -220,6 +220,57 @@ cloudflare_zone_id   = "YOUR_ZONE_ID"
 aap_domain_name      = "aap.yourdomain.com"
 ```
 
+### Apply Modules Independently
+
+This configuration includes two separate AAP deployment modules:
+- **`aap`** - Multi-node HA cluster (9 nodes)
+- **`aapaio`** - All-in-One single instance (c5.4xlarge)
+
+You can apply them independently without affecting each other:
+
+#### Apply only the AAP All-in-One (aapaio) module:
+
+```bash
+# Plan only aapaio resources
+terraform plan -target=module.aapaio
+
+# Apply only aapaio resources
+terraform apply -target=module.aapaio
+
+# Include Cloudflare DNS for aapaio
+terraform apply -target=module.aapaio -target=cloudflare_record.aapaio
+```
+
+#### Apply only the multi-node AAP cluster:
+
+```bash
+# Apply only the aap module
+terraform apply -target=module.aap
+
+# Include related resources (jumpserver, Cloudflare DNS)
+terraform apply -target=module.aap -target=aws_instance.jumpserver -target=cloudflare_record.aap
+```
+
+#### Alternative: Comment out modules in main.tf
+
+Instead of using `-target` flags, you can temporarily comment out modules you don't want to apply:
+
+```hcl
+# Comment the below one if not required
+# module "aap" {
+#   source = "./aap"
+#   ...
+# }
+```
+
+Then run normal `terraform apply`.
+
+**Notes:**
+- Both modules share the same VPC/networking infrastructure
+- The modules are independent - applying one doesn't affect the other
+- Each module creates its own EC2 instances, EIPs, and Cloudflare DNS records
+- See [AAPAIO_README.md](AAPAIO_README.md) for aapaio-specific documentation
+
 ## Architecture
 
 **Network:**

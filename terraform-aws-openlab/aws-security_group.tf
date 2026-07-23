@@ -117,6 +117,22 @@ resource "aws_security_group" "local_access" {
   }
 
   ingress {
+    description = "AAP MCP Server"
+    from_port   = 8448
+    to_port     = 8448
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "AAP EDA"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
     description = "NFS for EFS"
     from_port   = 2049
     to_port     = 2049
@@ -133,6 +149,6 @@ resource "aws_security_group" "local_access" {
   }
 
   tags = {
-    Name = "allow_ssh"
+    Name = "common_security_group"
   }
 }

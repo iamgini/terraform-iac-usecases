@@ -48,6 +48,34 @@ output "cloudflare_dns_status" {
   sensitive   = true
 }
 
+# ================ AAP All-in-One Outputs =========================
+output "aapaio_eip" {
+  value       = module.aapaio.aapaio_eip
+  description = "Elastic IP of AAP All-in-One"
+}
+
+output "aapaio_private_ip" {
+  value       = module.aapaio.aapaio_private_ip
+  description = "Private IP of AAP All-in-One"
+}
+
+output "aapaio_connection" {
+  value       = module.aapaio.aapaio_connection
+  description = "SSH command to connect to AAP All-in-One"
+}
+
+output "aapaio_url" {
+  value       = var.cloudflare_api_token != "" ? "https://aapaio.lab.gineesh.com" : "https://${module.aapaio.aapaio_eip}"
+  description = "AAP All-in-One Access URL"
+  sensitive   = true
+}
+
+output "aapaio_cloudflare_dns_status" {
+  value       = var.cloudflare_api_token != "" ? "Automated: aapaio.lab.gineesh.com → ${module.aapaio.aapaio_eip}" : "Manual: Point aapaio.lab.gineesh.com to ${module.aapaio.aapaio_eip} in Cloudflare"
+  description = "Cloudflare DNS configuration status for AAP All-in-One"
+  sensitive   = true
+}
+
 # Inventory helper outputs - use in your AAP inventory manually
 output "inventory_ansible_ssh_common_args" {
   value       = "ansible_ssh_common_args='-o ProxyCommand=\"ssh -W %%h:%%p -i ~/.ssh/id_rsa ec2-user@${aws_eip.jumpserver_eip.public_ip}\" -o StrictHostKeyChecking=no'"
