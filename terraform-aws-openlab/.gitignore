@@ -17,7 +17,11 @@ override.tf.json
 *.p12
 *.pfx
 terraform.tfvars
+*.auto.tfvars
 inventory.ini
+
+# Workspace state directories
+terraform.tfstate.d/
 
 # Environment Files
 .env
