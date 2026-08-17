@@ -16,8 +16,8 @@ override.tf.json
 *.crt
 *.p12
 *.pfx
-terraform.tfvars
-*.auto.tfvars
+*.tfvars
+!terraform.tfvars.example
 inventory.ini
 
 # Workspace state directories

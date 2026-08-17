@@ -16,6 +16,33 @@ Terraform configuration for deploying **Ansible Automation Platform (AAP)** infr
 
 **Default region:** `ap-southeast-2` (Asia Pacific - Sydney)
 
+## Workspaces (Multi-Account Deployments)
+
+This project uses **Terraform workspaces** to manage independent deployments from the same codebase. Each workspace has isolated state — applying in one never affects the other.
+
+| Workspace | Var File | Purpose |
+|---|---|---|
+| `default` | `default.tfvars` | Existing AAP environment |
+| `new-account` | `new-account.tfvars` | New AAP deployment (separate AWS account) |
+
+```bash
+terraform workspace list                  # List all workspaces
+terraform workspace select default        # Switch to existing environment
+terraform workspace select new-account    # Switch to new environment
+```
+
+**Rules:**
+- Always use `-var-file=<workspace>.tfvars` — never use a bare `terraform.tfvars` (it auto-loads for all workspaces)
+- Always set `AWS_PROFILE` (or env vars) matching the active workspace — workspaces isolate state, not credentials
+- All `*.tfvars` files are gitignored except `terraform.tfvars.example`
+- Workspace state is stored in `terraform.tfstate.d/<workspace>/` (gitignored)
+
+**Adding a new workspace:**
+```bash
+terraform workspace new <name>
+cp terraform.tfvars.example <name>.tfvars   # Edit with environment-specific values
+```
+
 ## Common Commands
 
 ### Terraform Workflow
@@ -27,14 +54,14 @@ terraform init
 # Validate configuration
 terraform validate
 
-# Preview changes
-terraform plan
+# Preview changes (always specify var-file for the active workspace)
+terraform plan -var-file=<workspace>.tfvars
 
 # Apply infrastructure (creates ~40+ resources)
-terraform apply
+terraform apply -var-file=<workspace>.tfvars
 
 # Destroy all infrastructure (destroys everything including EIP)
-terraform destroy
+terraform destroy -var-file=<workspace>.tfvars
 ```
 
 ### Generate AAP Inventory
@@ -82,7 +109,7 @@ This configures nginx on jumpserver with automated Let's Encrypt certificate for
 export TF_VAR_cloudflare_api_token=$(cat ~/.config/cloudflare)
 export TF_VAR_cloudflare_zone_id="your-zone-id"
 
-# Or use terraform.tfvars (add to .gitignore)
+# Or add to your workspace-specific .tfvars file (all *.tfvars are gitignored)
 # See CLOUDFLARE_SETUP.md for detailed setup
 
 # Verify DNS after apply
@@ -95,9 +122,10 @@ dig +short aap.lab.gineesh.com
 ### Module Structure
 
 - **Root module** (`*.tf` files): VPC, networking, security groups, jumpserver, Cloudflare DNS
-- **AAP module** (`./aap/`): EC2 instances, EFS
+- **AAP module** (`./aap/`): EC2 instances (9-node HA cluster), EFS
+- **AAPAIO module** (`./aapaio/`): AAP All-in-One instance (c5.4xlarge, public subnet, EIP)
 
-The separation allows reusing the AAP module for different environments while keeping network infrastructure at root level.
+The separation allows reusing modules for different environments while keeping network infrastructure at root level.
 
 ### Security Model
 
@@ -208,7 +236,7 @@ Key outputs for post-deployment:
 
 ### When Modifying AAP Node Count
 
-1. Update `aap_node_count` in `variables.tf` or `terraform.tfvars`
+1. Update `aap_node_count` in the workspace-specific `<workspace>.tfvars`
 2. Ensure `aap_node_names` in `aap/variables.tf` has enough entries
 3. Run `terraform plan` to verify which nodes will be created/destroyed
 4. After apply, regenerate inventory: `terraform output -raw aap_inventory`
@@ -224,7 +252,7 @@ If adding new AAP node types (e.g., execution nodes):
 ### When Changing SSH Keys
 
 If using keys other than `~/.ssh/id_rsa`:
-1. Update `ssh_key_pair` and `ssh_key_pair_pub` in `variables.tf` or `terraform.tfvars`
+1. Update `ssh_key_pair` and `ssh_key_pair_pub` in the workspace-specific `<workspace>.tfvars`
 2. Regenerate inventory to update `ansible_ssh_private_key_file` path
 3. Remember to use `-i` flag with correct key when SSHing
 
@@ -267,8 +295,9 @@ If using keys other than `~/.ssh/id_rsa`:
 - Verify ProxyCommand syntax in inventory includes correct jumpserver IP
 
 **Terraform state issues:**
-- State is local (`terraform.tfstate`) - not using remote backend
-- Do not commit `terraform.tfstate`, `terraform.tfvars`, or `inventory.ini` to git (all gitignored)
+- State is local, isolated per workspace (`terraform.tfstate.d/<workspace>/`)
+- The `default` workspace uses `terraform.tfstate` in the project root
+- Do not commit state files, `*.tfvars`, or `inventory.ini` to git (all gitignored)
 - For team collaboration, consider migrating to S3 backend
 
 **Hardcoded IPs in documentation:**
