@@ -51,6 +51,18 @@ variable "enable_public_ip_aap" {
   default     = false
 }
 
+variable "enable_aap" {
+  type        = bool
+  description = "Enable the 9-node AAP HA cluster module"
+  default     = false
+}
+
+variable "enable_aapaio" {
+  type        = bool
+  description = "Enable the AAP All-in-One module"
+  default     = false
+}
+
 # Cloudflare and DNS variables
 variable "cloudflare_api_token" {
   type        = string

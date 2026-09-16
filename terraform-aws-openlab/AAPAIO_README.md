@@ -26,7 +26,16 @@ AAPAIO Instance (c5.4xlarge)
 
 ## Quick Start
 
-### 1. Deploy Infrastructure
+### 1. Enable the module
+
+In `terraform.tfvars`:
+
+```hcl
+enable_aapaio = true
+enable_aap    = false   # leave false unless you also want the HA cluster
+```
+
+### 2. Deploy Infrastructure
 
 ```bash
 # Initialize Terraform (first time only)
@@ -236,8 +245,12 @@ Exports instance ID, IPs, and connection command.
 Creates Cloudflare A record pointing to AAPAIO EIP.
 
 ### Module invocation in `main.tf`
+
+The module is controlled by `var.enable_aapaio` — set it in `terraform.tfvars`:
+
 ```hcl
 module "aapaio" {
+  count  = var.enable_aapaio ? 1 : 0
   source = "./aapaio"
 
   subnet_id              = aws_subnet.openlab_subnet_public1.id

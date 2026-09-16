@@ -1,329 +1,437 @@
 # AWS Ansible Automation Platform (AAP) Infrastructure
 
-Terraform configuration for deploying Ansible Automation Platform infrastructure on AWS with high availability, load balancing, and secure bastion access.
+Terraform configuration for deploying Ansible Automation Platform on AWS with two deployment modes: a single **All-in-One** instance for dev/testing, or a full **9-node HA cluster** for production.
 
-## Introduction
+---
 
-This Terraform configuration provisions a complete AAP infrastructure with:
+## Deployment Modes
 
-- **9 AAP Nodes** (configurable):
-  - 2x Automation Controllers
-  - 2x Automation Gateways
-  - 2x Automation Hubs
-  - 2x Event-Driven Ansible (EDA) Controllers
-  - 1x Database Server
-- **VPC with Public/Private Subnets** across 2 Availability Zones
-- **EFS Storage** for shared AAP Hub content
-- **Bastion/Jumpserver** with Elastic IP for secure SSH access
-- **Private AAP Nodes** (no public IPs, accessible only via bastion)
-- **Nginx Load Balancer** on jumpserver with Let's Encrypt SSL
-- **Optional Cloudflare DNS** automation
-- Default `region = "ap-southeast-2"` (**Asia Pacific (Sydney)**)
+| Mode | Module | Use Case | Nodes | Access |
+|------|--------|----------|-------|--------|
+| **All-in-One (AAPAIO)** | `aapaio` | Dev / Testing | 1 × `c5.4xlarge` | Direct EIP |
+| **HA Cluster** | `aap` | Production | 9 × `t2.xlarge` | Via jumpserver |
+
+Both modes share the same VPC, subnets, security groups, and SSH key pair. They are controlled by **feature flags** in `terraform.tfvars` — no code editing required.
+
+---
 
 ## Prerequisites
 
-1. **Terraform** - [Install](https://learn.hashicorp.com/tutorials/terraform/install-cli)
-2. **AWS Credentials** - [Configure AWS CLI](https://github.com/iamgini/vagrant-iac-usecases#aws-setup)
-3. **Cloudflare DNS** (optional, for custom domain) - See [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md)
-4. **SSH Keys** - Generate if needed:
-   ```bash
-   ssh-keygen  # Default: ~/.ssh/id_rsa
-   ```
+1. **Terraform** ≥ 1.3 — [Install](https://developer.hashicorp.com/terraform/install)
+2. **AWS credentials** configured (`aws configure` or environment variables)
+3. **SSH key pair** at `~/.ssh/id_rsa` (or update `ssh_key_pair` in `terraform.tfvars`)
+4. **Cloudflare** API token and Zone ID (optional — for automatic DNS)
+
+```bash
+ssh-keygen   # if you don't have a key pair yet
+```
+
+---
 
 ## Quick Start
 
-### Step 1. Create SSH Keys to Access the ec2 instances
+```bash
+git clone https://github.com/iamgini/terraform-iac-usecases
+cd terraform-aws-openlab
 
-If you have existing keys, you can use that; otherwise create new ssh keys.
-
-- ***Warning**: Please remember to not to overwrite the existing ssh key pair files; use a new file name if you want to keep the old keys.*
-
-- If you are using any key files other than `~/.ssh/id_rsa`, then remember to update the same in `variables.tf` as well.
-
-```shell
-$ ssh-keygen
+terraform init
 ```
 
-## Step 4. Clone the Repository and create your Ansible Lab
+### 1. Choose deployment mode
 
-```shell
-$ git clone https://github.com/iamgini/terraform-iac-usecases
-$ cd terraform-aws-openlab
+Edit `terraform.tfvars` and set the feature flags:
 
-## init terraform
-$ terraform init
+```hcl
+# Deploy All-in-One only (recommended for dev/testing)
+enable_aapaio = true
+enable_aap    = false
 
-## verify the resource details before apply
-$ terraform plan
+# Deploy HA cluster only (production)
+enable_aapaio = false
+enable_aap    = true
 
-## Apply configuration - This step will spin up all necessary resources in your AWS Account
-$ terraform apply
-.
-.
-Do you want to perform these actions?
-  Terraform will perform the actions described above.
-  Only 'yes' will be accepted to approve.
-
-  Enter a value: yes
-
-aws_key_pair.ec2loginkey: Creating...
-aws_security_group.ansible_access: Creating...
-.
-.
-Apply complete! Resources: 46 added, 0 changed, 0 destroyed.
-
-Outputs:
-
-aap_ec2_instances = {
-  "i-xxx" = {
-    "name" = "aap-ac1"
-    "private_ip" = "10.0.x.x"
-    "public_ip" = ""
-  }
-  ...
-}
-jumpserver_public_ip = "<ELASTIC_IP>"
+# Deploy both (uncommon — each is independent)
+enable_aapaio = true
+enable_aap    = true
 ```
 
-## Step 5. Generate AAP Inventory
+### 2. Apply
 
-Get auto-generated inventory for your AAP installer:
+```bash
+terraform plan
+terraform apply
+```
 
-```shell
-# Get the complete inventory format
+That's it — no `-target` flags, no code commenting needed.
+
+---
+
+## Feature Flags Reference
+
+All flags live in `terraform.tfvars`:
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `enable_aapaio` | `false` | Enable AAP All-in-One single instance |
+| `enable_aap` | `false` | Enable 9-node AAP HA cluster |
+| `enable_public_ip_aap` | `false` | Give HA cluster nodes public IPs (not recommended) |
+| `aap_node_count` | `9` | Number of nodes for the HA cluster (1–10) |
+| `cloudflare_api_token` | `""` | Cloudflare API token (set via env var — see below) |
+| `cloudflare_zone_id` | `""` | Cloudflare Zone ID for `gineesh.com` |
+
+---
+
+## Infrastructure Overview
+
+### Shared Resources (always created)
+
+- **VPC** — `10.0.0.0/16`
+- **Public subnets** — `openlab_subnet_public1/2` (2 AZs)
+- **Private subnets** — `openlab_subnet_private1/2` (2 AZs)
+- **Internet Gateway** + public route table
+- **NAT Gateway** — private subnet outbound internet
+- **S3 VPC Endpoint** — for EFS access
+- **Security groups** — `jumpserver_sg`, `local_access`
+- **SSH key pair** — `openlab-key` (from `~/.ssh/id_rsa.pub`)
+- **Jumpserver** — `t2.micro` Amazon Linux 2023, Elastic IP, Nginx proxy
+
+### AAPAIO Module (`enable_aapaio = true`)
+
+- **EC2**: `c5.4xlarge` (16 vCPU, 32 GiB RAM), RHEL 9, 200 GB gp3
+- **Placement**: Public subnet with Elastic IP (direct internet access)
+- **DNS**: `aapaio.lab.gineesh.com → <EIP>` (auto-created if Cloudflare configured)
+
+### AAP HA Cluster Module (`enable_aap = true`)
+
+- **9 EC2 nodes** on private subnets (no public IPs):
+  - `aap-ac1`, `aap-ac2` — Automation Controllers
+  - `aap-gw1`, `aap-gw2` — Automation Gateways
+  - `aap-hub1`, `aap-hub2` — Automation Hubs
+  - `aap-eda1`, `aap-eda2` — Event-Driven Ansible
+  - `aap-db1` — Database
+- **EFS** — shared storage for Hub nodes
+- **Access** — via jumpserver bastion only
+- **SSL** — Nginx + Let's Encrypt on jumpserver
+- **DNS**: `aap.lab.gineesh.com → <jumpserver-EIP>` (auto-created if Cloudflare configured)
+
+---
+
+## Outputs
+
+### Always available
+
+```bash
+terraform output jumpserver_public_ip      # Jumpserver EIP
+terraform output jumpserver_connection     # SSH command for jumpserver
+```
+
+### When `enable_aapaio = true`
+
+```bash
+terraform output aapaio_eip                # AAPAIO Elastic IP
+terraform output aapaio_private_ip         # AAPAIO private IP
+terraform output aapaio_connection         # SSH command: ssh -i ~/.ssh/id_rsa ec2-user@<EIP>
+terraform output aapaio_url                # https://aapaio.lab.gineesh.com (or https://<EIP>)
+terraform output aapaio_cloudflare_dns_status
+```
+
+### When `enable_aap = true`
+
+```bash
+terraform output aap_ec2_instances         # Map of all 9 AAP nodes with IPs
+terraform output efs_dns_name              # EFS mount path for Hub nodes
+terraform output aap_inventory             # Ready-to-use AAP installer inventory
+terraform output inventory_ansible_ssh_common_args
+```
+
+---
+
+## Workspaces (Multi-Account Deployments)
+
+Use Terraform workspaces to manage independent deployments from the same codebase.
+
+| Workspace | Var File | Purpose |
+|-----------|----------|---------|
+| `default` | `terraform.tfvars` | Primary environment |
+| `new-account` | `new-account.tfvars` | Separate AWS account |
+
+```bash
+terraform workspace list
+terraform workspace select new-account
+terraform plan -var-file=new-account.tfvars
+terraform apply -var-file=new-account.tfvars
+```
+
+> Always match `AWS_PROFILE` (or env vars) to the active workspace — workspaces isolate state, not credentials.
+
+---
+
+## AAP All-in-One: Post-Deploy Steps
+
+### SSH access
+
+```bash
+# Get the SSH command
+terraform output aapaio_connection
+
+# Connect
+ssh -i ~/.ssh/id_rsa ec2-user@<aapaio-eip>
+
+# Or via DNS (if Cloudflare configured)
+ssh -i ~/.ssh/id_rsa ec2-user@aapaio.lab.gineesh.com
+```
+
+### Install AAP (all-in-one)
+
+```bash
+# On the AAPAIO instance:
+wget https://access.redhat.com/downloads/ansible-automation-platform-<version>
+tar xvf ansible-automation-platform-setup-bundle-<version>.tar.gz
+cd ansible-automation-platform-setup-bundle-<version>
+vim inventory     # configure all-in-one inventory
+sudo ./setup.sh
+```
+
+---
+
+## AAP HA Cluster: Post-Deploy Steps
+
+### Generate AAP inventory
+
+```bash
+# View inventory
 terraform output -raw aap_inventory
 
-# Save to file
+# Save to file for AAP installer
 terraform output -raw aap_inventory > inventory-hosts.txt
 ```
 
-**Output format** (matches AAP 2.6+ containerized installer):
+The generated inventory includes the bastion ProxyCommand so the AAP installer reaches private nodes directly from your local machine.
 
-```ini
-# This section is for your AAP Gateway host(s)
-# -----------------------------------------------------
-[automationgateway]
-aap-gw1.example.org ansible_host=10.0.12.185
-aap-gw2.example.org ansible_host=10.0.3.62
-
-# This section is for your AAP Controller host(s)
-# -----------------------------------------------------
-[automationcontroller]
-aap-ac1.example.org ansible_host=10.0.13.69
-aap-ac2.example.org ansible_host=10.0.6.14
-
-# This section is for your AAP Automation Hub host(s)
-# -----------------------------------------------------
-[automationhub]
-aap-hub1.example.org ansible_host=10.0.6.101
-aap-hub2.example.org ansible_host=10.0.12.203
-
-# This section is for your AAP EDA Controller host(s)
-# -----------------------------------------------------
-[automationeda]
-aap-eda1.example.org ansible_host=10.0.2.59
-aap-eda2.example.org ansible_host=10.0.14.152
-
-[redis]
-aap-gw1.example.org ansible_host=10.0.12.185
-aap-gw2.example.org ansible_host=10.0.3.62
-aap-hub1.example.org ansible_host=10.0.6.101
-aap-hub2.example.org ansible_host=10.0.12.203
-aap-eda1.example.org ansible_host=10.0.2.59
-aap-eda2.example.org ansible_host=10.0.14.152
-
-[database]
-aap-db1.example.org ansible_host=10.0.6.125
-
-# Add to [all:vars]:
-# ansible_user=ec2-user
-# ansible_ssh_private_key_file=~/.ssh/id_rsa
-# ansible_ssh_common_args='-o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>" -o StrictHostKeyChecking=no'
-```
-
-**Usage:**
-1. Copy the output into your AAP inventory file
-2. Add your AAP-specific variables (admin passwords, registry credentials, etc.)
-3. Run AAP installer from your local machine - it will proxy through bastion automatically!
-
-## Step 6. Setup Nginx Load Balancer (HTTPS)
-
-First, generate the inventory file:
+### Setup Nginx load balancer (HTTPS)
 
 ```bash
-# Generate inventory from Terraform output
 terraform output -raw aap_inventory > inventory.ini
-```
-
-Then configure nginx on jumpserver with Let's Encrypt SSL:
-
-```bash
 cd playbooks
 ansible-playbook -i ../inventory.ini setup-nginx-lb.yml
 ```
 
-**What this does:**
-- Installs nginx on jumpserver
-- Configures load balancing to AAP gateway nodes
-- Auto-obtains Let's Encrypt SSL certificate
-- Sets up HTTPS with auto-renewal
+This installs Nginx on the jumpserver, auto-obtains a Let's Encrypt certificate for `aap.lab.gineesh.com`, and configures load balancing to the AAP gateway nodes on port 8446.
 
-**Access AAP:**
-- URL: `https://aap.lab.gineesh.com` (after AAP installation)
+### SSH to AAP nodes (from local machine)
 
-## Step 7. SSH Access
-
-**Connect to Bastion:**
-```shell
-# Get the jumpserver IP from terraform output
-terraform output jumpserver_public_ip
-
-# Connect
-ssh -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>
+```bash
+# Via ProxyCommand through jumpserver
+ssh -i ~/.ssh/id_rsa \
+    -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<jumpserver-eip>" \
+    ec2-user@<aap-node-private-ip>
 ```
 
-**Connect to AAP nodes via Bastion (from local machine):**
+---
 
-The inventory already includes the bastion proxy configuration. When you run the AAP installer from your local machine, it automatically connects through the bastion to reach the private AAP nodes.
+## Cloudflare DNS Setup
 
-**Manual SSH to AAP nodes (for troubleshooting):**
-```shell
-# Via ProxyCommand (replace IPs with your actual values from terraform output)
-ssh -i ~/.ssh/id_rsa -o ProxyCommand="ssh -W %h:%p -i ~/.ssh/id_rsa ec2-user@<JUMPSERVER_IP>" ec2-user@<AAP_NODE_PRIVATE_IP>
+Set credentials via environment variables — never put them in `.tfvars` files:
+
+```bash
+export TF_VAR_cloudflare_api_token=$(cat ~/.config/cloudflare)
+export TF_VAR_cloudflare_zone_id="your-zone-id"
 ```
+
+- Zone must be the root domain: `gineesh.com` (not `lab.gineesh.com`)
+- API token needs: **Zone DNS Edit** + **Zone Read** permissions
+- Keep `cloudflare_proxied = false` — Let's Encrypt requires direct access
+
+```bash
+# Verify DNS after apply
+terraform output aapaio_cloudflare_dns_status
+terraform output cloudflare_dns_status
+dig +short aapaio.lab.gineesh.com
 ```
 
-## Configuration Options
+See [CLOUDFLARE_SETUP.md](CLOUDFLARE_SETUP.md) for full setup instructions.
 
-### Adjust AAP Node Count
+---
 
-Default: 9 nodes. Modify in `variables.tf`:
+## File Structure
 
-```hcl
-variable "aap_node_count" {
-  default = 9  # Change to 2-10
-}
 ```
+terraform-aws-openlab/
+├── main.tf                      # Providers + module invocations (feature-flagged)
+├── variables.tf                 # All input variables incl. enable_aap / enable_aapaio
+├── locals.tf                    # Computed locals (AAP inventory text, safe module refs)
+├── output.tf                    # All outputs (null when module is disabled)
+├── terraform.tfvars             # Feature flags + environment config
+├── versions.tf                  # Terraform + provider version constraints
+│
+├── aws-vpc.tf                   # VPC
+├── aws-vpc-subnets.tf           # Public + private subnets
+├── aws-internet-gw*.tf          # Internet gateway + attachment
+├── aws-routes.tf                # Route tables + routes
+├── aws-route-table*.tf          # Route table definitions + associations
+├── aws-security_group.tf        # Security groups
+├── aws-ec2-keypair.tf           # SSH key pair
+├── aws-vpc-endpoints.tf         # S3 VPC endpoint
+├── aws-infra-setup.tf           # VPC endpoint route table associations
+│
+├── jumpserver.tf                # Bastion host + EIP + Nginx-ready SG
+├── cloudflare-dns.tf            # Cloudflare DNS for jumpserver (HA cluster)
+├── cloudflare-dns-aapaio.tf     # Cloudflare DNS for AAPAIO
+│
+├── aap/                         # AAP HA cluster module (9 nodes + EFS)
+│   ├── ec2-aap.tf
+│   ├── efs.tf
+│   ├── variables.tf
+│   └── output.tf
+│
+├── aapaio/                      # AAP All-in-One module
+│   ├── ec2-aapaio.tf
+│   ├── variables.tf
+│   └── output.tf
+│
+└── playbooks/
+    └── setup-nginx-lb.yml       # Nginx + Let's Encrypt on jumpserver
+```
+
+---
+
+## Architecture Diagram
+
+```
+                        Internet
+                           │
+              ┌────────────┴────────────┐
+              │                         │
+     Jumpserver EIP               AAPAIO EIP
+     (aap.lab.gineesh.com)   (aapaio.lab.gineesh.com)
+              │                         │
+    ┌─────────▼──────────┐   ┌──────────▼──────────┐
+    │  Public Subnet AZ1  │   │  Public Subnet AZ1   │
+    │  Jumpserver t2.micro│   │  AAPAIO c5.4xlarge   │
+    │  Nginx + Let's Enc. │   │  All-in-One AAP       │
+    └─────────────────────┘   └──────────────────────┘
+              │
+    ┌─────────▼──────────────────────────────────────┐
+    │              Private Subnets (AZ1 + AZ2)        │
+    │  aap-ac1  aap-ac2  aap-gw1  aap-gw2             │
+    │  aap-hub1 aap-hub2 aap-eda1 aap-eda2 aap-db1   │
+    └─────────────────────────────────────────────────┘
+              │
+         NAT Gateway (outbound internet)
+```
+
+---
+
+## Configuration Reference
 
 ### Instance Types
 
-- **AAP Nodes**: `t2.xlarge` (default) - modify in `aap/variables.tf`
-- **Bastion**: `t2.micro` (default) - modify in `variables.tf`
+| Resource | Default | Notes |
+|----------|---------|-------|
+| Jumpserver | `t2.micro` | Set `jumpserver_instance_type` in tfvars |
+| AAPAIO | `c5.4xlarge` | 16 vCPU, 32 GiB — set in `main.tf` module block |
+| AAP nodes | `t2.xlarge` | Set in `aap/variables.tf` |
 
-### Optional: Cloudflare SSL/TLS Automation
+### AMI
 
-Create `terraform.tfvars` for automatic SSL certificate via Cloudflare:
+Default: RHEL 9 in `ap-southeast-2` — `ami-0705fe1e9a50e0d57`
 
-```hcl
-cloudflare_api_token = "YOUR_CLOUDFLARE_API_TOKEN"
-cloudflare_zone_id   = "YOUR_ZONE_ID"
-aap_domain_name      = "aap.yourdomain.com"
-```
+Override with `aws_ami_id` in tfvars.
 
-### Apply Modules Independently
+### Storage
 
-This configuration includes two separate AAP deployment modules:
-- **`aap`** - Multi-node HA cluster (9 nodes)
-- **`aapaio`** - All-in-One single instance (c5.4xlarge)
+- AAPAIO: 200 GB gp3 root volume
+- AAP nodes: default EBS (modify in `aap/ec2-aap.tf`)
+- EFS: shared across Hub nodes (HA cluster only)
 
-You can apply them independently without affecting each other:
+---
 
-#### Apply only the AAP All-in-One (aapaio) module:
+## Common Operations
 
-```bash
-# Plan only aapaio resources
-terraform plan -target=module.aapaio
-
-# Apply only aapaio resources
-terraform apply -target=module.aapaio
-
-# Include Cloudflare DNS for aapaio
-terraform apply -target=module.aapaio -target=cloudflare_record.aapaio
-```
-
-#### Apply only the multi-node AAP cluster:
+### Switch deployment mode
 
 ```bash
-# Apply only the aap module
-terraform apply -target=module.aap
+# Edit terraform.tfvars
+enable_aapaio = false
+enable_aap    = true
 
-# Include related resources (jumpserver, Cloudflare DNS)
-terraform apply -target=module.aap -target=aws_instance.jumpserver -target=cloudflare_record.aap
+terraform apply   # Terraform handles the diff automatically
 ```
 
-#### Alternative: Comment out modules in main.tf
+### Add a new workspace
 
-Instead of using `-target` flags, you can temporarily comment out modules you don't want to apply:
-
-```hcl
-# Comment the below one if not required
-# module "aap" {
-#   source = "./aap"
-#   ...
-# }
+```bash
+terraform workspace new staging
+cp terraform.tfvars staging.tfvars   # Edit with staging-specific values
+terraform apply -var-file=staging.tfvars
 ```
 
-Then run normal `terraform apply`.
+### Rebuild after destroy
 
-**Notes:**
-- Both modules share the same VPC/networking infrastructure
-- The modules are independent - applying one doesn't affect the other
-- Each module creates its own EC2 instances, EIPs, and Cloudflare DNS records
-- See [AAPAIO_README.md](AAPAIO_README.md) for aapaio-specific documentation
+```bash
+terraform destroy
+terraform apply
+# If HA cluster: regenerate inventory and re-run nginx playbook
+terraform output -raw aap_inventory > inventory.ini
+ansible-playbook -i inventory.ini playbooks/setup-nginx-lb.yml
+```
 
-## Architecture
+---
 
-**Network:**
-- VPC: 10.0.0.0/16
-- 2 Public Subnets (bastion)
-- 2 Private Subnets (AAP nodes)
-- NAT Gateway for private subnet internet access
-- S3 VPC Endpoint for EFS
+## Troubleshooting
 
-**Security:**
-- AAP nodes: Private IPs only, no direct internet access
-- Bastion: Single entry point with Elastic IP (static)
-- Security Groups: Bastion → AAP (SSH)
+**Let's Encrypt certificate fails**
+- Verify DNS resolves to jumpserver: `dig +short aap.lab.gineesh.com`
+- Cloudflare proxy must be OFF (gray cloud, `cloudflare_proxied = false`)
+- Ports 80 and 443 must be open on the jumpserver security group
 
-**Load Balancer:**
-- Nginx on jumpserver with Let's Encrypt SSL
-- Load balances to AAP Gateway nodes (port 8446)
-- Uses `least_conn` algorithm
-- WebSocket support for AAP UI
+**Cannot SSH to AAP nodes**
+- Verify jumpserver is reachable: `ssh ec2-user@<jumpserver-eip>`
+- Check node private IPs: `terraform output aap_ec2_instances`
+- ProxyCommand in inventory must match current jumpserver IP (regenerate after destroy)
 
-## Cleanup
+**Terraform state issues**
+- State is local per workspace (`terraform.tfstate.d/<workspace>/`)
+- Do NOT commit `.tfvars`, `*.tfstate`, or `inventory.ini` files (all gitignored)
+- For team use: migrate state to an S3 backend
 
-### Destroy Infrastructure
+**Module output is `null`**
+- Set the corresponding flag: `enable_aapaio = true` or `enable_aap = true`
+- Run `terraform apply` to create the resources
+
+---
+
+## Cost Estimate
+
+**AAPAIO only** (ap-southeast-2):
+
+| Resource | Cost |
+|----------|------|
+| `c5.4xlarge` instance | ~$0.68/hr (~$490/month) |
+| 200 GB gp3 storage | ~$16/month |
+| Elastic IP (attached) | Free |
+| **Total** | **~$506/month** |
+
+**HA Cluster** (9 × `t2.xlarge`):
+
+| Resource | Cost |
+|----------|------|
+| 9 × `t2.xlarge` instances | ~$1.50/hr (~$1080/month) |
+| EFS storage | Variable |
+| NAT Gateway | ~$45/month |
+| **Total** | **~$1125+/month** |
+
+> Destroy resources when not in use to avoid charges.
 
 ```bash
 terraform destroy
 ```
 
-**What happens:**
-- All infrastructure destroyed including Elastic IP
-- Cloudflare DNS automatically updates to new IP on next apply
+---
 
-**After destroy → apply:**
-1. `terraform apply` (new infrastructure + Cloudflare DNS auto-updates)
-2. Re-run nginx playbook (obtain new SSL cert)
-3. Re-install AAP
+## References
 
-### Step 8. Destroy Lab Once you are Done
-
-As we know, we are dealing with FREE tier, remember to destroy the resources once you finish the lab or practicing for that day.
-
-```shell
-$ terraform destroy
-```
-
-## Appendix
-
-### Use `local-exec` if you have Ansible installed locally
-
-If you are using Linux/Mac machine and ansible is available locally, then you an use below method for executing Terraform provisioner. (Current configuration is to execute ansible playbook  from `ansible-engine` node itself.)
-
-```json
-  provisioner "local-exec" {
-    command = "ansible-playbook engine-config.yaml"
-  }
-```
+- [AAP All-in-One details](AAPAIO_README.md)
+- [Cloudflare DNS setup](CLOUDFLARE_SETUP.md)
+- [AAP 2.x Containerized Installer docs](https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform)
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
