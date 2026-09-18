@@ -100,6 +100,7 @@ All flags live in `terraform.tfvars`:
 - **EC2**: `c5.4xlarge` (16 vCPU, 32 GiB RAM), RHEL 9, 200 GB gp3
 - **Placement**: Public subnet with Elastic IP (direct internet access)
 - **DNS**: `aapaio.lab.gineesh.com → <EIP>` (auto-created if Cloudflare configured)
+- **Security group ports**: 22 (SSH), 80 (HTTP), 443 (HTTPS), 5432 (PostgreSQL), 6379/16379 (Redis), 8443–8447 (AAP components), 27199 (Receptor), 50051 (gRPC), ICMP
 
 ### AAP HA Cluster Module (`enable_aap = true`)
 
@@ -431,7 +432,6 @@ terraform destroy
 
 ## References
 
-- [AAP All-in-One details](AAPAIO_README.md)
 - [Cloudflare DNS setup](CLOUDFLARE_SETUP.md)
 - [AAP 2.x Containerized Installer docs](https://access.redhat.com/documentation/en-us/red_hat_ansible_automation_platform)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
