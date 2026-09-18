@@ -1,0 +1,4 @@
+export AWS_ACCESS_KEY_ID=YOUR-ACCESS-KEY
+export AWS_SECRET_ACCESS_KEY=YOUR-SECRET-KEY
+export AWS_DEFAULT_REGION=ap-southeast-2
+export AWS_REGION=ap-southeast-2
