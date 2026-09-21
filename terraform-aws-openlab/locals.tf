@@ -4,7 +4,7 @@ locals {
   aap_efs_dns   = var.enable_aap ? one(module.aap).efs_dns_name : ""
 
   aapaio_eip      = var.enable_aapaio ? one(module.aapaio).aapaio_eip : ""
-  aapaio_hostname = var.cloudflare_api_token != "" ? "aapaio.lab.gineesh.com" : local.aapaio_eip
+  aapaio_hostname = var.aapaio_domain_name
 
   aapaio_inventory_text = <<-EOT
 [automationgateway]

@@ -63,6 +63,18 @@ variable "enable_aapaio" {
   default     = false
 }
 
+variable "aapaio_domain_name" {
+  type        = string
+  description = "Hostname (FQDN) for AAP All-in-One — used in inventory and URL. If no DNS/Cloudflare, add '<EIP> <this-value>' to /etc/hosts on the node."
+  default     = "aapaio.example.com"
+}
+
+variable "aapaio_subdomain" {
+  type        = string
+  description = "Subdomain for AAPAIO Cloudflare DNS record (without the root domain, e.g. 'aapaio.lab')"
+  default     = "aapaio.lab"
+}
+
 # Cloudflare and DNS variables
 variable "cloudflare_api_token" {
   type        = string

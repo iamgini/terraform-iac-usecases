@@ -232,6 +232,10 @@ ssh -i ~/.ssh/id_rsa \
 
 ## Cloudflare DNS Setup
 
+> **Cloudflare is optional.** If you don't have a Cloudflare account or domain, just skip this section — no configuration change is needed. Both `cloudflare_api_token` and `cloudflare_zone_id` default to `""`, and all Cloudflare DNS resources are automatically skipped when the token is empty. Use `terraform output aapaio_eip` or `terraform output jumpserver_public_ip` to get the IP and update your DNS manually.
+
+### Enabling Cloudflare DNS automation
+
 Set credentials via environment variables — never put them in `.tfvars` files:
 
 ```bash

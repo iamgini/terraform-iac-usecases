@@ -64,13 +64,13 @@ output "aapaio_connection" {
 }
 
 output "aapaio_url" {
-  value       = var.enable_aapaio ? (var.cloudflare_api_token != "" ? "https://aapaio.lab.gineesh.com" : "https://${one(module.aapaio).aapaio_eip}") : null
+  value       = var.enable_aapaio ? "https://${var.aapaio_domain_name}" : null
   description = "AAP All-in-One access URL (null when enable_aapaio = false)"
   sensitive   = true
 }
 
 output "aapaio_cloudflare_dns_status" {
-  value       = var.enable_aapaio ? (var.cloudflare_api_token != "" ? "Automated: aapaio.lab.gineesh.com → ${one(module.aapaio).aapaio_eip}" : "Manual: Point aapaio.lab.gineesh.com to ${one(module.aapaio).aapaio_eip} in Cloudflare") : null
+  value       = var.enable_aapaio ? (var.cloudflare_api_token != "" ? "Automated: ${var.aapaio_domain_name} → ${one(module.aapaio).aapaio_eip}" : "No DNS configured — add '${one(module.aapaio).aapaio_eip} ${var.aapaio_domain_name}' to /etc/hosts on the node") : null
   description = "Cloudflare DNS status for AAP All-in-One (null when enable_aapaio = false)"
   sensitive   = true
 }

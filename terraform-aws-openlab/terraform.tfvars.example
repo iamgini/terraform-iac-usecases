@@ -11,12 +11,24 @@
 aap_domain_name = "aap.lab.gineesh.com"
 aap_subdomain   = "aap.lab"
 
+# AAPAIO Domain Configuration
+# Set your own FQDN — any name works (real DNS or /etc/hosts on the node)
+# If no Cloudflare, run: echo "<EIP> <aapaio_domain_name>" >> /etc/hosts on the AAPAIO node
+aapaio_domain_name = "aapaio.example.com"
+aapaio_subdomain   = "aapaio.lab"  # Only used if Cloudflare is configured
+
 # Cloudflare Proxy (Orange Cloud)
 # MUST be false - Cloudflare proxy breaks Let's Encrypt HTTP challenge
 cloudflare_proxied = false
 
 # Create wildcard DNS (*.aap.lab.gineesh.com)
 create_wildcard_dns = true
+
+# ========================================
+# Module Feature Flags
+# ========================================
+enable_aap    = false  # 9-node AAP HA cluster
+enable_aapaio = false  # AAP All-in-One (single node)
 
 # ========================================
 # AAP Node Configuration
