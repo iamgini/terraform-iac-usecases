@@ -34,4 +34,5 @@ module "aapaio" {
   key_name               = aws_key_pair.ec2loginkey.key_name
   vpc_security_group_ids = [aws_security_group.local_access.id]
   instance_type          = "c5.4xlarge"
+  aapaio_domain_name     = var.aapaio_domain_name
 }

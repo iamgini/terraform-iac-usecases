@@ -13,6 +13,13 @@ resource "aws_instance" "aapaio" {
     volume_type = "gp3"
   }
 
+  user_data = <<-EOF
+    #!/bin/bash
+    PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+    echo "$PRIVATE_IP  ${var.aapaio_domain_name}" >> /etc/hosts
+    hostnamectl set-hostname ${var.aapaio_domain_name}
+  EOF
+
   tags = {
     Name    = "aapaio"
     Purpose = "AAP All-in-One Node"

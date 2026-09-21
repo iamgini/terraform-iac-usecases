@@ -24,3 +24,9 @@ variable "vpc_security_group_ids" {
   default     = []
   description = "VPC security group IDs for the AAP All-in-One node"
 }
+
+variable "aapaio_domain_name" {
+  type        = string
+  description = "FQDN for the AAP All-in-One node — added to /etc/hosts on the instance at boot"
+  default     = "aapaio.example.com"
+}
