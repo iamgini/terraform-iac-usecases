@@ -196,9 +196,17 @@ Key outputs for post-deployment:
 - `instance_type`: AAP node size (default `t2.xlarge`)
 - `aap_node_names`: Ordered list of node names (ac, gw, hub, eda, db)
 
+### AAPAIO Module Variables (aapaio/variables.tf)
+
+- `instance_type`: AAPAIO node size (default `c5.4xlarge`)
+- `aapaio_domain_name`: Passed from root — written to `/etc/hosts` and set as system hostname at boot via `user_data`
+
 ### DNS Variables
 
-- `aap_domain_name`: Primary domain (default `aap.lab.gineesh.com`)
+- `aap_domain_name`: Primary domain for AAP HA cluster (default `aap.lab.gineesh.com`)
+- `aap_subdomain`: Subdomain for Cloudflare DNS record (default `aap.lab`)
+- `aapaio_domain_name`: FQDN for AAPAIO node (default `aapaio.example.com`) — used in inventory, URL, and node `/etc/hosts`
+- `aapaio_subdomain`: Subdomain for AAPAIO Cloudflare DNS record (default `aapaio.lab`)
 - `cloudflare_api_token`: Cloudflare API token (sensitive, optional)
 - `cloudflare_zone_id`: Zone ID for `gineesh.com` (optional)
 
@@ -281,6 +289,22 @@ If using keys other than `~/.ssh/id_rsa`:
 - **AAP Controllers/Gateways/Hubs**: Minimum `t2.xlarge` (4 vCPU, 16GB RAM)
 - **Database**: `t2.xlarge` or larger for production
 - **Jumpserver**: `t2.micro` sufficient (just SSH bastion + nginx proxy)
+
+## AAPAIO Hostname (Non-Cloudflare)
+
+AAP installer requires a proper FQDN — raw IPs are rejected. When Cloudflare is not configured:
+
+1. **Node `/etc/hosts`** — automated via `user_data` at boot (private IP → hostname)
+2. **Laptop `/etc/hosts`** — one manual step after `terraform apply`:
+   ```bash
+   # Get the EIP from output
+   terraform output aapaio_eip
+   # Add to /etc/hosts
+   echo "<EIP>  <aapaio_domain_name>" | sudo tee -a /etc/hosts
+   ```
+   The `aapaio_cloudflare_dns_status` output prints the exact line to add.
+
+Set your hostname in tfvars: `aapaio_domain_name = "aapaio.mylab.com"`
 
 ## Common Issues
 
